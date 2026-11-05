@@ -304,7 +304,7 @@ textarea { resize: vertical; min-height: 60px; }
       <h2>👥 Staff Details During Visit</h2>
       <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Enter the details of staff present at the time of inspection.</p>
       <label>Instructor Name</label>
-      <input type="text" id="staff-instructor" placeholder="e.g. Rajan K.P.">
+      <input type="text" id="staff-instructor" placeholder="">
       <label>Instructor Designation</label>
       <select id="staff-instructor-desig-sel" onchange="handleDesigSelect()" style="margin-bottom:6px;">
         <option value="">-- Select Designation --</option>
@@ -313,13 +313,13 @@ textarea { resize: vertical; min-height: 60px; }
         <option value="Workshop Attendant">Workshop Attendant</option>
         <option value="__other__">Other (type manually)</option>
       </select>
-      <input type="text" id="staff-instructor-desig" placeholder="Type designation manually…" style="display:none;">
+      <input type="text" id="staff-instructor-desig" placeholder="" style="display:none;">
       <label>Workshop Attendant Name</label>
-      <input type="text" id="staff-attendant" placeholder="e.g. Suresh M.">
+      <input type="text" id="staff-attendant" placeholder="">
       <label>Other Staff Present <span style="font-weight:400;color:var(--muted);">(names, designations)</span></label>
-      <textarea id="staff-others" placeholder="e.g. Smt. Latha – Store Keeper, Sri. Anil – Pump Operator" rows="2"></textarea>
+      <textarea id="staff-others" placeholder="" rows="2"></textarea>
       <label>Remarks / General Observations</label>
-      <textarea id="staff-remarks" placeholder="General remarks about the visit, punctuality, cleanliness, etc." rows="2"></textarea>
+      <textarea id="staff-remarks" placeholder="" rows="2"></textarea>
     </div>
   </div>
 
@@ -355,7 +355,7 @@ textarea { resize: vertical; min-height: 60px; }
       </div>
       <div id="custom-items"></div>
       <div class="add-item-row no-print">
-        <input type="text" id="new-item-name" placeholder="Type new checklist item name…" onkeydown="if(event.key==='Enter') addCustomItem()">
+        <input type="text" id="new-item-name" placeholder="" onkeydown="if(event.key==='Enter') addCustomItem()">
         <button class="btn btn-outline btn-sm" onclick="addCustomItem()">+ Add</button>
       </div>
 
@@ -381,7 +381,7 @@ textarea { resize: vertical; min-height: 60px; }
       <select id="hist-filter-district" style="flex:1; min-width:140px; margin-bottom:0;" onchange="renderHistory()">
         <option value="">All Districts</option>
       </select>
-      <input type="text" id="hist-search" placeholder="Search ITI / Trade…" style="flex:1; min-width:140px; margin-bottom:0;" oninput="renderHistory()">
+      <input type="text" id="hist-search" placeholder="" style="flex:1; min-width:140px; margin-bottom:0;" oninput="renderHistory()">
       <button class="btn btn-danger btn-sm" onclick="clearAllHistory()">🗑️ Clear All</button>
     </div>
 
@@ -399,15 +399,15 @@ textarea { resize: vertical; min-height: 60px; }
     <h2>👤 Inspector Profile</h2>
     <p style="font-size:13px; color:var(--muted); margin-bottom:14px;">This information will appear on all inspection reports.</p>
     <label>Full Name *</label>
-    <input type="text" id="prof-name" placeholder="e.g. Rajan K.P.">
+    <input type="text" id="prof-name" placeholder="">
     <label>Designation</label>
-    <input type="text" id="prof-desig" placeholder="e.g. Inspector of Training / AIT">
+    <input type="text" id="prof-desig" placeholder="">
     <label>Office</label>
-    <input type="text" id="prof-office" placeholder="e.g. DET Office, Thiruvananthapuram">
+    <input type="text" id="prof-office" placeholder="">
     <label>Phone</label>
-    <input type="tel" id="prof-phone" placeholder="e.g. 9400XXXXXX">
+    <input type="tel" id="prof-phone" placeholder="">
     <label>Email</label>
-    <input type="email" id="prof-email" placeholder="e.g. inspector@kerala.gov.in">
+    <input type="email" id="prof-email" placeholder="">
     <div class="btn-row">
       <button class="btn btn-success" onclick="saveProfile()">💾 Save Profile</button>
       <button class="btn btn-outline" onclick="loadProfile()">↩️ Reload Saved</button>
@@ -420,7 +420,7 @@ textarea { resize: vertical; min-height: 60px; }
     <p style="font-size:13px; color:var(--muted); margin-bottom:12px;">Items added here appear in every new inspection by default.</p>
     <div id="default-custom-list"></div>
     <div class="add-item-row">
-      <input type="text" id="new-default-item" placeholder="e.g. First Aid Kit, Tool Register…" onkeydown="if(event.key==='Enter') addDefaultItem()">
+      <input type="text" id="new-default-item" placeholder="" onkeydown="if(event.key==='Enter') addDefaultItem()">
       <button class="btn btn-outline btn-sm" onclick="addDefaultItem()">+ Add</button>
     </div>
   </div>
@@ -833,7 +833,7 @@ function createCheckRow(section, idx, name, deletable = false) {
       ${deletable ? `<button class="chk-delete no-print" title="Remove item" onclick="removeCustom(${idx})">🗑</button>` : ''}
     </div>
     <div class="chk-remark">
-      <input type="text" placeholder="Remark (optional)" id="remark-${section}-${idx}" value="${getRemark(section,idx)}" oninput="updateSummary()">
+      <input type="text" placeholder="" id="remark-${section}-${idx}" value="${getRemark(section,idx)}" oninput="updateSummary()">
     </div>
   `;
   return div;
@@ -1303,7 +1303,7 @@ function editRecord(id) {
   <div style="border:1px solid #c7d2fe;border-radius:8px;padding:12px;margin-bottom:14px;background:#f0f4ff;">
     <div style="font-weight:700;font-size:13px;color:var(--primary-dark);margin-bottom:9px;">👥 Staff Details</div>
     <label style="font-size:12px;font-weight:600;color:var(--muted);">Instructor Name</label>
-    <input type="text" id="edit-staff-instructor" value="${s.instructor||''}" placeholder="Instructor Name" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;margin-bottom:7px;">
+    <input type="text" id="edit-staff-instructor" value="${s.instructor||''}" placeholder="" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;margin-bottom:7px;">
     <label style="font-size:12px;font-weight:600;color:var(--muted);">Instructor Designation</label>
     <select id="edit-staff-instructor-desig-sel" onchange="handleEditDesigSelect()" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;margin-bottom:4px;">
       <option value="">-- Select Designation --</option>
@@ -1312,13 +1312,13 @@ function editRecord(id) {
       <option value="Workshop Attendant"  ${['Workshop Attendant'].includes(s.instructorDesig)?'selected':''}>Workshop Attendant</option>
       <option value="__other__" ${s.instructorDesig && !['Senior Instructor','Junior Instructor','Workshop Attendant'].includes(s.instructorDesig)?'selected':''}>Other (type manually)</option>
     </select>
-    <input type="text" id="edit-staff-instructor-desig" value="${s.instructorDesig && !['Senior Instructor','Junior Instructor','Workshop Attendant'].includes(s.instructorDesig) ? s.instructorDesig : ''}" placeholder="Type designation…" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;margin-bottom:7px;display:${s.instructorDesig && !['Senior Instructor','Junior Instructor','Workshop Attendant'].includes(s.instructorDesig)?'block':'none'};">
+    <input type="text" id="edit-staff-instructor-desig" value="${s.instructorDesig && !['Senior Instructor','Junior Instructor','Workshop Attendant'].includes(s.instructorDesig) ? s.instructorDesig : ''}" placeholder="" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;margin-bottom:7px;display:${s.instructorDesig && !['Senior Instructor','Junior Instructor','Workshop Attendant'].includes(s.instructorDesig)?'block':'none'};">
     <label style="font-size:12px;font-weight:600;color:var(--muted);">Workshop Attendant</label>
-    <input type="text" id="edit-staff-attendant" value="${s.attendant||''}" placeholder="Attendant Name" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;margin-bottom:7px;">
+    <input type="text" id="edit-staff-attendant" value="${s.attendant||''}" placeholder="" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;margin-bottom:7px;">
     <label style="font-size:12px;font-weight:600;color:var(--muted);">Other Staff Present</label>
-    <textarea id="edit-staff-others" placeholder="Names and designations…" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;margin-bottom:7px;resize:vertical;">${s.others||''}</textarea>
+    <textarea id="edit-staff-others" placeholder="" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;margin-bottom:7px;resize:vertical;">${s.others||''}</textarea>
     <label style="font-size:12px;font-weight:600;color:var(--muted);">General Remarks</label>
-    <textarea id="edit-staff-remarks" placeholder="General observations…" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;resize:vertical;">${s.remarks||''}</textarea>
+    <textarea id="edit-staff-remarks" placeholder="" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;resize:vertical;">${s.remarks||''}</textarea>
   </div>`;
 
   const sections = [
@@ -1337,7 +1337,7 @@ function editRecord(id) {
           <button onclick="editToggle(this,'${sec.key}',${i},'no')"  style="padding:4px 10px;border:1.5px solid #d1d5db;border-radius:14px;cursor:pointer;font-size:11px;font-weight:700;background:${item.status==='no'?'#fee2e2':'#f9fafb'};color:${item.status==='no'?'#991b1b':'#6b7280'};">❌ No</button>
           <button onclick="editToggle(this,'${sec.key}',${i},'nu')"  style="padding:4px 10px;border:1.5px solid #d1d5db;border-radius:14px;cursor:pointer;font-size:11px;font-weight:700;background:${item.status==='nu'?'#fef3c7':'#f9fafb'};color:${item.status==='nu'?'#92400e':'#6b7280'};">⚠️ N/U</button>
         </div>
-        <input type="text" id="edit-remark-${sec.key}-${i}" value="${item.remark||''}" placeholder="Remark…" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;">
+        <input type="text" id="edit-remark-${sec.key}-${i}" value="${item.remark||''}" placeholder="" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;">
       </div>`;
     });
   });
