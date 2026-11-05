@@ -666,6 +666,13 @@ document.addEventListener('DOMContentLoaded', () => {
   loadProfile();
   loadDefaultCustomItems();
   renderHistory();
+
+  // Restore last District + ITI selection
+  const lastSel = JSON.parse(localStorage.getItem('lastITISelection') || 'null');
+  if (lastSel && lastSel.district) {
+    distSel.value = lastSel.district;
+    loadITIs(lastSel.itiIdx);
+  }
 });
 
 // ================================================================
@@ -817,7 +824,7 @@ function getEditDesigValue() {
 // ================================================================
 // CASCADING DROPDOWNS
 // ================================================================
-function loadITIs() {
+function loadITIs(restoreIti) {
   const district = document.getElementById('sel-district').value;
   const itiSel = document.getElementById('sel-iti');
   const tradeSel = document.getElementById('sel-trade');
@@ -829,7 +836,7 @@ function loadITIs() {
   document.getElementById('staff-card').style.display = 'none';
   document.getElementById('shift-unit-row').style.display = 'none';
 
-  if (!district) return;
+  if (!district) { localStorage.removeItem('lastITISelection'); return; }
   const itis = ITI_DATA[district] || [];
   itis.forEach((iti, idx) => {
     const o = document.createElement('option');
@@ -838,6 +845,36 @@ function loadITIs() {
     itiSel.appendChild(o);
   });
   itiSel.disabled = false;
+
+  // Restore ITI if provided (on page load)
+  if (restoreIti !== undefined && restoreIti !== '') {
+    itiSel.value = restoreIti;
+    // populate trade dropdown without auto-opening checklist
+    loadTradesOnly();
+  } else {
+    // User manually changed district — save it, clear ITI
+    localStorage.setItem('lastITISelection', JSON.stringify({ district, itiIdx: '' }));
+  }
+}
+
+// Populates trade dropdown silently (used on restore — does NOT show checklist)
+function loadTradesOnly() {
+  const district = document.getElementById('sel-district').value;
+  const itiIdx = document.getElementById('sel-iti').value;
+  const tradeSel = document.getElementById('sel-trade');
+  tradeSel.innerHTML = '<option value="">-- Select Trade --</option>';
+  tradeSel.disabled = true;
+  if (itiIdx === '' || !district) return;
+  const iti = ITI_DATA[district][parseInt(itiIdx)];
+  if (!iti) return;
+  iti.trades.forEach(t => {
+    const o = document.createElement('option');
+    o.value = t; o.textContent = t;
+    tradeSel.appendChild(o);
+  });
+  tradeSel.disabled = false;
+  // Save District + ITI
+  localStorage.setItem('lastITISelection', JSON.stringify({ district, itiIdx }));
 }
 
 function loadTrades() {
@@ -857,6 +894,8 @@ function loadTrades() {
     o.value = t; o.textContent = t;
     tradeSel.appendChild(o);
   });
+  // Save District + ITI when user picks an ITI
+  localStorage.setItem('lastITISelection', JSON.stringify({ district, itiIdx }));
   tradeSel.disabled = false;
   tradeSel.onchange = function() {
     // Reset shift/unit when trade changes
@@ -1203,6 +1242,7 @@ function buildReportHTML(data) {
 function resetForm() {
   if (!confirm('Reset all checklist entries?')) return;
   Object.keys(statusMap).forEach(k => delete statusMap[k]);
+  localStorage.removeItem('lastITISelection');
   document.getElementById('sel-district').value = '';
   document.getElementById('sel-iti').innerHTML = '<option value="">-- Select District First --</option>';
   document.getElementById('sel-iti').disabled = true;
