@@ -1,0 +1,1370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ITI Inspection App — Kerala DET</title>
+<style>
+:root {
+  --primary: #1a56db;
+  --primary-dark: #1e429f;
+  --success: #057a55;
+  --danger: #c81e1e;
+  --warning: #9f580a;
+  --bg: #f3f4f6;
+  --card: #ffffff;
+  --border: #e5e7eb;
+  --text: #111827;
+  --muted: #6b7280;
+  --yes-bg: #d1fae5; --yes-txt: #065f46;
+  --no-bg: #fee2e2;  --no-txt: #991b1b;
+  --nu-bg: #fef3c7;  --nu-txt: #92400e;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); color: var(--text); font-size: 15px; }
+
+/* ===== TOP NAVBAR ===== */
+.navbar {
+  background: var(--primary-dark);
+  color: #fff;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 54px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 6px rgba(0,0,0,.3);
+}
+.navbar h1 { font-size: 17px; font-weight: 700; letter-spacing: .3px; }
+.navbar .nav-btns { display: flex; gap: 6px; }
+.nav-btn {
+  background: rgba(255,255,255,.18);
+  border: 1px solid rgba(255,255,255,.35);
+  color: #fff;
+  padding: 5px 11px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: background .15s;
+}
+.nav-btn:hover { background: rgba(255,255,255,.3); }
+.nav-btn.active { background: #fff; color: var(--primary-dark); }
+
+/* ===== PAGES ===== */
+.page { display: none; padding: 16px; max-width: 780px; margin: 0 auto; }
+.page.active { display: block; }
+
+/* ===== CARDS ===== */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px;
+  margin-bottom: 14px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.07);
+}
+.card h2 { font-size: 15px; font-weight: 700; margin-bottom: 14px; color: var(--primary-dark); border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+.card h3 { font-size: 14px; font-weight: 700; margin: 14px 0 8px; color: var(--text); }
+
+/* ===== FORM ELEMENTS ===== */
+label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+input[type=text], input[type=email], input[type=tel], select, textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 7px;
+  font-size: 14px;
+  color: var(--text);
+  background: #fff;
+  outline: none;
+  transition: border-color .15s;
+  margin-bottom: 12px;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(26,86,219,.15); }
+textarea { resize: vertical; min-height: 60px; }
+
+/* ===== BUTTONS ===== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 16px;
+  border-radius: 7px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: opacity .15s, transform .1s;
+}
+.btn:active { transform: scale(.97); }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-dark); }
+.btn-success { background: var(--success); color: #fff; }
+.btn-danger  { background: var(--danger);  color: #fff; }
+.btn-warning { background: #d97706; color: #fff; }
+.btn-outline { background: #fff; color: var(--primary); border: 1.5px solid var(--primary); }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+.btn-xs { padding: 3px 8px; font-size: 11px; }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+
+/* ===== STATUS TOGGLE ===== */
+.status-toggle { display: flex; gap: 4px; }
+.status-toggle button {
+  padding: 5px 11px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  background: #f9fafb;
+  color: var(--muted);
+  transition: all .15s;
+  white-space: nowrap;
+}
+.status-toggle button.sel-yes { background: var(--yes-bg); color: var(--yes-txt); border-color: #6ee7b7; }
+.status-toggle button.sel-no  { background: var(--no-bg);  color: var(--no-txt);  border-color: #fca5a5; }
+.status-toggle button.sel-nu  { background: var(--nu-bg);  color: var(--nu-txt);  border-color: #fcd34d; }
+
+/* ===== CHECKLIST ROW ===== */
+.chk-row {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: #fafafa;
+}
+.chk-row .chk-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.chk-row .chk-name { font-size: 13px; font-weight: 600; flex: 1; min-width: 140px; }
+.chk-remark { margin-top: 7px; }
+.chk-remark input { margin-bottom: 0; padding: 5px 8px; font-size: 12px; }
+.chk-delete { color: var(--danger); background: none; border: none; cursor: pointer; font-size: 16px; padding: 2px 5px; border-radius: 4px; }
+.chk-delete:hover { background: var(--no-bg); }
+
+/* ===== SECTION HEADER ===== */
+.section-hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 16px 0 8px;
+}
+.section-hdr h3 { margin: 0; font-size: 14px; color: var(--primary-dark); }
+.badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: var(--primary);
+  color: #fff;
+}
+
+/* ===== SUMMARY BAR ===== */
+.summary-bar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 10px 0;
+}
+.summary-pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.sp-yes { background: var(--yes-bg); color: var(--yes-txt); }
+.sp-no  { background: var(--no-bg);  color: var(--no-txt); }
+.sp-nu  { background: var(--nu-bg);  color: var(--nu-txt); }
+.sp-tot { background: #e0e7ff; color: #3730a3; }
+
+/* ===== HISTORY TABLE ===== */
+.hist-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.hist-table th { background: #e0e7ff; color: #3730a3; font-size: 12px; padding: 8px 10px; text-align: left; border-bottom: 2px solid #c7d2fe; }
+.hist-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.hist-table tr:hover td { background: #f0f4ff; }
+.hist-empty { text-align: center; color: var(--muted); padding: 30px; font-size: 14px; }
+
+/* ===== ADD-ITEM FORM ===== */
+.add-item-row { display: flex; gap: 8px; align-items: flex-end; margin-top: 8px; }
+.add-item-row input { margin-bottom: 0; flex: 1; }
+
+/* ===== MODAL ===== */
+.modal-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.45);
+  z-index: 999;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.modal-overlay.open { display: flex; }
+.modal-box {
+  background: #fff;
+  border-radius: 12px;
+  padding: 22px;
+  max-width: 540px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 40px rgba(0,0,0,.25);
+}
+.modal-box h2 { font-size: 16px; color: var(--primary-dark); margin-bottom: 14px; }
+
+/* ===== PRINT ===== */
+@media print {
+  .navbar, .no-print, .nav-btns, .btn-row, .add-item-row, .chk-delete { display: none !important; }
+  body { background: #fff; font-size: 12px; }
+  .page { display: block !important; padding: 0; max-width: 100%; }
+  .card { box-shadow: none; border: 1px solid #ccc; page-break-inside: avoid; }
+  .print-header { display: block !important; }
+  .status-toggle button { display: none; }
+  .status-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; }
+}
+.print-header { display: none; }
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 540px) {
+  .chk-row .chk-top { flex-direction: column; align-items: flex-start; }
+  .hist-table { font-size: 12px; }
+  .hist-table th, .hist-table td { padding: 6px 7px; }
+}
+</style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<div class="navbar">
+  <h1>🏭 ITI Inspection</h1>
+  <div class="nav-btns">
+    <button class="nav-btn active" onclick="showPage('home')">🏠 New</button>
+    <button class="nav-btn" onclick="showPage('history')">📋 History</button>
+    <button class="nav-btn" onclick="showPage('profile')">👤 Profile</button>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- PAGE: NEW INSPECTION                                          -->
+<!-- ============================================================ -->
+<div class="page active" id="page-home">
+
+  <!-- SELECTION CARD -->
+  <div class="card">
+    <h2>🔍 Select ITI for Inspection</h2>
+    <label>Inspection Date</label>
+    <input type="text" id="insp-date" readonly>
+
+    <label>District</label>
+    <select id="sel-district" onchange="loadITIs()">
+      <option value="">-- Select District --</option>
+    </select>
+
+    <label>ITI Name</label>
+    <select id="sel-iti" onchange="loadTrades()" disabled>
+      <option value="">-- Select District First --</option>
+    </select>
+
+    <label>Trade</label>
+    <select id="sel-trade" disabled>
+      <option value="">-- Select ITI First --</option>
+    </select>
+
+    <div id="shift-unit-row" style="display:none;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div>
+          <label>Shift</label>
+          <select id="sel-shift">
+            <option value="">-- Select Shift --</option>
+            <option value="Morning Shift">Morning Shift</option>
+            <option value="Evening Shift">Evening Shift</option>
+            <option value="Single Shift">Single Shift</option>
+          </select>
+        </div>
+        <div>
+          <label>Unit</label>
+          <select id="sel-unit">
+            <option value="">-- Select Unit --</option>
+            <option value="Unit I">Unit I</option>
+            <option value="Unit II">Unit II</option>
+            <option value="Unit III">Unit III</option>
+            <option value="Unit IV">Unit IV</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STAFF DETAILS CARD -->
+  <div id="staff-card" style="display:none">
+    <div class="card">
+      <h2>👥 Staff Details During Visit</h2>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Enter the details of staff present at the time of inspection.</p>
+      <label>Instructor Name</label>
+      <input type="text" id="staff-instructor" placeholder="e.g. Rajan K.P.">
+      <label>Instructor Designation / Trade</label>
+      <input type="text" id="staff-instructor-desig" placeholder="e.g. Instructor – Electrician">
+      <label>Workshop Attendant Name</label>
+      <input type="text" id="staff-attendant" placeholder="e.g. Suresh M.">
+      <label>Other Staff Present <span style="font-weight:400;color:var(--muted);">(names, designations)</span></label>
+      <textarea id="staff-others" placeholder="e.g. Smt. Latha – Store Keeper, Sri. Anil – Pump Operator" rows="2"></textarea>
+      <label>Remarks / General Observations</label>
+      <textarea id="staff-remarks" placeholder="General remarks about the visit, punctuality, cleanliness, etc." rows="2"></textarea>
+    </div>
+  </div>
+
+  <!-- CHECKLIST CARD -->
+  <div id="checklist-card" style="display:none">
+    <div class="card">
+      <h2 id="chk-title">Inspection Checklist</h2>
+
+      <!-- Summary bar -->
+      <div class="summary-bar" id="summary-bar">
+        <div class="summary-pill sp-yes">✅ Available: <span id="cnt-yes">0</span></div>
+        <div class="summary-pill sp-no">❌ Not Available: <span id="cnt-no">0</span></div>
+        <div class="summary-pill sp-nu">⚠️ Not Updated: <span id="cnt-nu">0</span></div>
+        <div class="summary-pill sp-tot">📋 Total: <span id="cnt-tot">0</span></div>
+      </div>
+
+      <!-- Section A: NSQF Documents -->
+      <div class="section-hdr">
+        <h3>📄 Section A — NSQF Documents (14)</h3>
+      </div>
+      <div id="nsqf-items"></div>
+
+      <!-- Section B: Registers & Safety -->
+      <div class="section-hdr">
+        <h3>📦 Section B — Registers &amp; Safety</h3>
+      </div>
+      <div id="reg-items"></div>
+
+      <!-- Section C: Custom Items -->
+      <div class="section-hdr">
+        <h3>➕ Section C — Additional Items</h3>
+        <span class="badge" id="custom-count">0</span>
+      </div>
+      <div id="custom-items"></div>
+      <div class="add-item-row no-print">
+        <input type="text" id="new-item-name" placeholder="Type new checklist item name…" onkeydown="if(event.key==='Enter') addCustomItem()">
+        <button class="btn btn-outline btn-sm" onclick="addCustomItem()">+ Add</button>
+      </div>
+
+      <!-- Action buttons -->
+      <div class="btn-row no-print" style="margin-top:16px;">
+        <button class="btn btn-success" onclick="saveInspection()">💾 Save Inspection</button>
+        <button class="btn btn-primary" onclick="printReport()">🖨️ Print Report</button>
+        <button class="btn btn-outline" onclick="resetForm()">🔄 Reset</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- PAGE: HISTORY                                                 -->
+<!-- ============================================================ -->
+<div class="page" id="page-history">
+  <div class="card">
+    <h2>📋 Inspection History</h2>
+
+    <!-- Filter row -->
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;" class="no-print">
+      <select id="hist-filter-district" style="flex:1; min-width:140px; margin-bottom:0;" onchange="renderHistory()">
+        <option value="">All Districts</option>
+      </select>
+      <input type="text" id="hist-search" placeholder="Search ITI / Trade…" style="flex:1; min-width:140px; margin-bottom:0;" oninput="renderHistory()">
+      <button class="btn btn-danger btn-sm" onclick="clearAllHistory()">🗑️ Clear All</button>
+    </div>
+
+    <div id="hist-container">
+      <p class="hist-empty">No inspections saved yet.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- PAGE: INSPECTOR PROFILE                                       -->
+<!-- ============================================================ -->
+<div class="page" id="page-profile">
+  <div class="card">
+    <h2>👤 Inspector Profile</h2>
+    <p style="font-size:13px; color:var(--muted); margin-bottom:14px;">This information will appear on all inspection reports.</p>
+    <label>Full Name *</label>
+    <input type="text" id="prof-name" placeholder="e.g. Rajan K.P.">
+    <label>Designation</label>
+    <input type="text" id="prof-desig" placeholder="e.g. Inspector of Training / AIT">
+    <label>Office</label>
+    <input type="text" id="prof-office" placeholder="e.g. DET Office, Thiruvananthapuram">
+    <label>Phone</label>
+    <input type="tel" id="prof-phone" placeholder="e.g. 9400XXXXXX">
+    <label>Email</label>
+    <input type="email" id="prof-email" placeholder="e.g. inspector@kerala.gov.in">
+    <div class="btn-row">
+      <button class="btn btn-success" onclick="saveProfile()">💾 Save Profile</button>
+      <button class="btn btn-outline" onclick="loadProfile()">↩️ Reload Saved</button>
+    </div>
+    <div id="prof-msg" style="margin-top:10px; font-size:13px; color:var(--success); display:none;"></div>
+  </div>
+
+  <div class="card">
+    <h2>🔧 Custom Default Checklist Items</h2>
+    <p style="font-size:13px; color:var(--muted); margin-bottom:12px;">Items added here appear in every new inspection by default.</p>
+    <div id="default-custom-list"></div>
+    <div class="add-item-row">
+      <input type="text" id="new-default-item" placeholder="e.g. First Aid Kit, Tool Register…" onkeydown="if(event.key==='Enter') addDefaultItem()">
+      <button class="btn btn-outline btn-sm" onclick="addDefaultItem()">+ Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- EDIT MODAL                                                    -->
+<!-- ============================================================ -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal-box">
+    <h2>✏️ Edit Inspection</h2>
+    <div id="edit-modal-body"></div>
+    <div class="btn-row" style="margin-top:14px;">
+      <button class="btn btn-success" onclick="saveEditModal()">💾 Save Changes</button>
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- VIEW MODAL                                                    -->
+<!-- ============================================================ -->
+<div class="modal-overlay" id="view-modal">
+  <div class="modal-box" id="view-modal-body" style="max-width:680px;">
+  </div>
+</div>
+
+<script>
+// ================================================================
+// DATA: All 100 ITIs across Kerala
+// Format: { district: [ { name, code, trades: [] } ] }
+// ================================================================
+const ITI_DATA = {
+  "Thiruvananthapuram": [
+    { name: "Govt. ITI Dhanuvachapuram", code: "GR32000224", trades: ["Draughtsman Civil (NSQF)","Mechanic Diesel (NSQF)","Electrician (NSQF)","Fitter (NSQF)","Turner (NSQF)","Machinist (NSQF)","Electronics Mechanic (NSQF)","Refrigeration & AC Technician (NSQF)","COPA (NSQF)","COPA (NSQF) (SCP)","Mechanic Motor Vehicle (NSQF)","Surveyor (NSQF)","Draughtsman Mechanic (NSQF)","Tool & Die Maker (NSQF)","Computer Hardware & NW Maintenance (NSQF)","Mechanic Consumer Electronics Appliances (NSQF)","Operator Advanced Machine Tools (NSQF)","Sheet Metal Worker (NSQF)","Welder GMAW & GTAW (NSQF)","Wireman (NSQF)","Wireman (NSQF) (LWF)","Plumber (NSQF)","Wood Work Technician (NSQF)","Painter General (NSQF)","Welder (NSQF)"] },
+    { name: "Govt. ITI (Vanitha) Parassala", code: "GR32000639", trades: ["COPA (NSQF)","Draughtsman Civil (NSQF)"] },
+    { name: "Govt. ITI Chakka", code: "GU32000222", trades: ["Mechanic Diesel (NSQF)","Draughtsman Civil (NSQF)","Draughtsman Mechanic (NSQF)","Electrician (NSQF)","Instrument Mechanic (NSQF)","Refrigeration & AC Technician (NSQF) (SCP)","Refrigeration & AC Technician (NSQF)","Surveyor (NSQF)","Fitter (NSQF)","Turner (NSQF)","Machinist (NSQF)","Electronics Mechanic (NSQF)","COPA (NSQF)","Mechanic Motor Vehicle (NSQF)","Mechanic Autobody Painting (NSQF)","Pump Operator cum Mechanic (NSQF)","Mechanic Auto Electrical & Electronics (NSQF)","Mechanic Consumer Electronics Appliances (NSQF)","Tool & Die Maker (NSQF)","Technician Power Electronics Systems (NSQF)","Sheet Metal Worker (NSQF)","Wireman (NSQF)","Plumber (NSQF)","Painter General (NSQF)","Wood Work Technician (NSQF)","Welder (NSQF)"] },
+    { name: "Nainarmuttom Memorial Govt. ITI Aryanad", code: "GR32000349", trades: ["Electronics Mechanic (NSQF)","COPA (NSQF)","Electrician (NSQF)","Fitter (NSQF)","Mechanic Diesel (NSQF)","Mechanic Motor Vehicle (NSQF)","Wireman (NSQF)","Plumber (NSQF)","Painter General (NSQF)"] },
+    { name: "Govt. ITI (Vanitha) Kazhakuttom", code: "GU32000266", trades: ["Draughtsman Civil (NSQF)","Draughtsman Mechanic (NSQF)","Electronics Mechanic (NSQF)","Turner (NSQF)","Surveyor (NSQF)","Refrigeration & AC Technician (NSQF)","Electrician (NSQF)","Mechanic Motor Vehicle (NSQF)","Mechanic Motor Vehicle (NSQF) (LWF)","Electroplater (NSQF)","Fitter (NSQF)","Mechanic Machine Tool Maintenance (NSQF)","Technician Power Electronics Systems (NSQF)","Computer Hardware & NW Maintenance (NSQF)","Computer Hardware & NW Maintenance (NSQF) (SCP)","Mechanic Diesel (NSQF)","Dress Making (NSQF)"] },
+    { name: "Govt. ITI Attingal", code: "GR32000246", trades: ["Mechanic Diesel (NSQF)","Fitter (NSQF)","Electrician (NSQF)","Surveyor (NSQF)","Machinist (NSQF)","Draughtsman Civil (NSQF)","Draughtsman Mechanic (NSQF)","Mechanic Diesel (NSQF)","Electronics Mechanic (NSQF)","Plumber (NSQF)","Wireman (NSQF)","Welder (NSQF)","Welder GMAW & GTAW (NSQF)","Welder Welding & Inspection (NSQF)","Welder Pipe (NSQF)","Plumber (NSQF)","Sheet Metal Worker (NSQF)","Wood Work Technician (NSQF)","Painter General (NSQF)","Welder (NSQF)"] },
+    { name: "Govt. ITI Malayinkeezhu", code: "GR32000643", trades: ["Mechanic Motor Vehicle (NSQF)","Electrician (NSQF)","Welder (NSQF)"] },
+    { name: "Govt. ITI Vamnapuram", code: "GR32000651", trades: ["Draughtsman Civil (NSQF)","Plumber (NSQF)"] },
+    { name: "Govt. ITI Varkala", code: "GR32000650", trades: ["Draughtsman Civil (NSQF)","Electrician (NSQF)","Mechanic Diesel (NSQF)","Food & Beverage Service Assistant (NSQF)"] }
+  ],
+  "Kollam": [
+    { name: "Govt. ITI Chandanathope", code: "GR32000234", trades: ["Mechanic Diesel (NSQF)","Draughtsman Civil (NSQF)","Draughtsman Mechanic (NSQF)","Electrician (NSQF)","Fitter (NSQF)","Surveyor (NSQF)","COPA (NSQF)","Hospitality House Keeping (NSQF)","Fashion Design & Technology (NSQF)","Computer Aided Embroidery & Designing (NSQF)","Architectural Draughtsman (NSQF)","Front Office Assistant (NSQF)","Technician Power Electronics Systems (NSQF)","Dress Making (NSQF)","Draughtsman Civil (NSQF)","Draughtsman Mechanic (NSQF)","Electronics Mechanic (NSQF)","Turner (NSQF)","Surveyor (NSQF) (SCP)","Refrigeration & AC Technician (NSQF)","Electrician (NSQF)","Mechanic Motor Vehicle (NSQF)","Mechanic Motor Vehicle (NSQF) (LWF)","Electroplater (NSQF)","Sheet Metal Worker (NSQF)","Plumber (NSQF)","Welder (NSQF)","Wood Work Technician (NSQF)","Painter General (NSQF)","Wireman (NSQF)"] },
+    { name: "Govt. ITI Thavalakkara", code: "GR32000652", trades: ["Surveyor (NSQF)","Plumber (NSQF)","Welder (NSQF)"] },
+    { name: "Govt. ITI Chadayamangalam", code: "GR32000654", trades: ["Draughtsman Civil (NSQF)","Surveyor (NSQF)"] },
+    { name: "Govt. ITI Kottarakkara", code: "GR32000653", trades: ["Electrician (NSQF)","Welder (NSQF)"] },
+    { name: "Govt. ITI Chathannur", code: "GR32000426", trades: ["Electrician (NSQF)","Fitter (NSQF)","Surveyor (NSQF)","Mechanic Motor Vehicle (NSQF)","Draughtsman Civil (NSQF)","Dress Making (NSQF)","Welder (NSQF)","Painter General (NSQF)"] },
+    { name: "Govt. BVTC Chandanathope", code: "GR32000408", trades: ["Food Production General (NSQF)","Food & Beverage Service Assistant (NSQF)","Attendant Operator Chemical Plant (NSQF)","Instrument Mechanic Chemical Plant (NSQF)","Laboratory Assistant Chemical Plant (NSQF)","Maintenance Mechanic Chemical Plant (NSQF)","Catering & Hospitality Assistant (NSQF)","Baker & Confectioner (NSQF)"] }
+  ],
+  "Pathanamthitta": [
+    { name: "Govt. ITI Chenneerkara", code: "GR32000309", trades: ["Draughtsman Civil (NSQF)","Mechanic Motor Vehicle (NSQF)","Electronics Mechanic (NSQF)","Fitter (NSQF)","Architectural Draughtsman (NSQF)","COPA (NSQF)","Food Production General (NSQF)","Electrician (NSQF)","Technician Power Electronics Systems (NSQF)","Mechanic Diesel (NSQF)","Instrument Mechanic (NSQF)","ICT System Maintenance (NSQF)","Welder (NSQF)","Plumber (NSQF)"] },
+    { name: "Govt. ITI Ranni", code: "GU32000655", trades: ["Draughtsman Civil (NSQF)","Electronics Mechanic (NSQF)"] },
+    { name: "Govt. ITI (Vanitha) Mezhuveli", code: "GR32000560", trades: ["Draughtsman Civil (NSQF)","Fashion Design & Technology (NSQF)"] }
+  ],
+  "Alappuzha": [
+    { name: "Govt. ITI Chengannur", code: "GR32000241", trades: ["Electrician (NSQF)","Refrigeration & AC Technician (NSQF)","Instrument Mechanic (NSQF)","Fitter (NSQF)","Fitter (NSQF) (LWF)","Turner (NSQF)","Electrician (NSQF)","Surveyor (NSQF) (SCP)","COPA (NSQF)","Draughtsman Civil (NSQF)","Surveyor (NSQF)","Mechanic Diesel (NSQF)","Machinist (NSQF)","Mechanic Motor Vehicle (NSQF)","Mechanic Diesel (NSQF) (LWF)","Mechanic Consumer Electronics Appliances (NSQF)","Lift & Escalator Mechanic (NSQF)","Mechanic Motor Vehicle (NSQF)","Tool & Die Maker (NSQF)","Mechanic Autobody Painting (NSQF)","Computer Hardware & NW Maintenance (NSQF)","Sheet Metal Worker (NSQF)","Plumber (NSQF)","Welder (NSQF)","Wood Work Technician (NSQF)","Painter General (NSQF)","Wireman (NSQF)"] },
+    { name: "Govt. ITI (Vanitha) Chengannur", code: "GR32000351", trades: ["Electronics Mechanic (NSQF)","COPA (NSQF)","Stenographer Secretarial Assistant English (NSQF)","Surveyor (NSQF)","Draughtsman Civil (NSQF)","Computer Hardware & NW Maintenance (NSQF)","Dress Making (NSQF)"] },
+    { name: "Govt. ITI Purakkad", code: "GR32000031", trades: ["Interior Design & Decoration (NSQF)","Welder (NSQF)"] },
+    { name: "Govt. ITI Pallippadu", code: "GU32000628", trades: ["Draughtsman Civil (NSQF)","Surveyor (NSQF)"] },
+    { name: "Govt. ITI Vayalar", code: "GR32000640", trades: ["Refrigeration & AC Technician (NSQF)","Draughtsman Civil (NSQF)"] }
+  ],
+  "Kottayam": [
+    { name: "Govt. ITI Ettumanoor", code: "GR32000231", trades: ["Electrician (NSQF)","Refrigeration & AC Technician (NSQF)","Instrument Mechanic (NSQF)","Fitter (NSQF)","Fitter (NSQF) (LWF)","Turner (NSQF)","Surveyor (NSQF) (SCP)","COPA (NSQF)","Draughtsman Civil (NSQF)","Surveyor (NSQF)","Mechanic Diesel (NSQF)","Machinist (NSQF)","Mechanic Motor Vehicle (NSQF)","Operator Advanced Machine Tools (NSQF)","Mechanic Motor Vehicle (NSQF)","Tool & Die Maker (NSQF)","Technician Power Electronics Systems (NSQF)","Mechanic Consumer Electronics Appliances (NSQF)","Tool & Die Maker Press Tools Jigs & Fixtures (NSQF)","Technician Power Electronics Systems (NSQF)","Computer Hardware & NW Maintenance (NSQF)","Sheet Metal Worker (NSQF)","Plumber (NSQF)","Welder (NSQF)","Wood Work Technician (NSQF)","Welder (NSQF) (LWF)","Sheet Metal Worker (NSQF)","Wireman (NSQF)"] },
+    { name: "PTC Chakkomedu Govt. ITI Pallikkathode", code: "GR32000265", trades: ["Draughtsman Civil (NSQF)","Refrigeration & AC Technician (NSQF)","Mechanic Motor Vehicle (NSQF)","Auto Electrical & Electronics (NSQF)","Desktop Publishing Operator (NSQF)","Desktop Publishing Operator (NSQF) (SCP)","Front Office Assistant (NSQF)","Mechanic Auto Electrical & Electronics (NSQF)","Digital Photographer (NSQF)","Computer Hardware & NW Maintenance (NSQF)","Food Production General (NSQF)","Technician Power Electronics Systems (NSQF)","Food & Beverage Service Assistant (NSQF)","Plumber (NSQF)","Welder (NSQF)","Painter General (NSQF)","Wireman (NSQF)"] },
+    { name: "Govt. ITI (Vanitha) Changannacherry", code: "GU32000657", trades: ["Draughtsman Civil (NSQF)"] },
+    { name: "Govt. ITI Peruva", code: "GR32000656", trades: ["COPA (NSQF)","Draughtsman Civil (NSQF)"] },
+    { name: "Govt. ITI Thiruvarppu", code: "GU32000645", trades: ["Electrician (NSQF)","Plumber (NSQF)"] },
+    { name: "Govt. ITI Kottayam", code: "GR32000251", trades: ["Turner (NSQF)","Fitter (NSQF)","Electrician (NSQF)","Electronics Mechanic (NSQF)","COPA (NSQF)","Tourist Guide (NSQF)","Surveyor (NSQF)","Draughtsman Civil (NSQF)","Refrigeration & AC Technician (NSQF)","Mechanic Motor Vehicle (NSQF)","Plumber (NSQF)","Welder (NSQF)","Welder (NSQF) (LWF)","Wireman (NSQF)"] }
+  ],
+  "Idukki": [
+    { name: "Govt. ITI Kattappana", code: "GR32000251", trades: ["Turner (NSQF)","Fitter (NSQF)","Electrician (NSQF)","Electronics Mechanic (NSQF)","COPA (NSQF)","Surveyor (NSQF)","Draughtsman Civil (NSQF)","Refrigeration & AC Technician (NSQF)","Mechanic Motor Vehicle (NSQF)","Plumber (NSQF)","Welder (NSQF)","Wireman (NSQF)"] },
+    { name: "Govt. ITI Rajakkadu", code: "GR32000550", trades: ["Welder (NSQF)","Plumber (NSQF)"] },
+    { name: "Govt. ITI Kanthikkuzhy", code: "GR32000658", trades: ["Draughtsman Civil (NSQF)","Desktop Publishing Operator (NSQF)"] },
+    { name: "Govt. ITI Chithirapuram", code: "GR32000683", trades: ["Draughtsman Civil (NSQF)","Electrician (NSQF)"] }
+  ],
+  "Ernakulam": [
+    { name: "Govt. ITI Kalamassery", code: "GU32000242", trades: ["Electrician (NSQF)","Electrician (NSQF) (LWF)","Electronics Mechanic (NSQF)","Machinist (NSQF)","Instrument Mechanic (NSQF)","Fitter (NSQF)","Turner (NSQF)","Draughtsman Civil (NSQF)","Surveyor (NSQF)","Mechanic Diesel (NSQF)","Mechanic Motor Vehicle (NSQF)","Mechanic Motor Vehicle (NSQF) (LWF)","Mechanic Auto Electrical & Electronics (NSQF)","Horticulture (NSQF)","Mechanic Tractor (NSQF)","Mechanic Agricultural Machinery (NSQF)","Draughtsman Civil (NSQF)","Electronics Mechanic (NSQF) (SCP)","Tool & Die Maker (NSQF)","Technician Power Electronics Systems (NSQF)","Computer Hardware & NW Maintenance (NSQF)","Sheet Metal Worker (NSQF)","Plumber (NSQF)","Welder (NSQF)","Wood Work Technician (NSQF)","Wireman (NSQF)"] },
+    { name: "Govt. ITI (Vanitha) Chengannur Ernakulam", code: "GR32000353", trades: ["Electronics Mechanic (NSQF)","COPA (NSQF)","Stenographer Secretarial Assistant English (NSQF)","Draughtsman Civil (NSQF)","Surveyor (NSQF)","Fashion Design & Technology (NSQF)","Architectural Draughtsman (NSQF)"] },
+    { name: "Govt. ITI Arakuzha", code: "GR32000627", trades: ["Draughtsman Civil (NSQF)","Plumber (NSQF)"] },
+    { name: "Govt. ITI Maneed", code: "GR32000659", trades: ["Surveyor (NSQF)","Welder (NSQF)"] },
+    { name: "Govt. ITI Vengoor", code: "GR32000638", trades: ["Electrician (NSQF)","Draughtsman Civil (NSQF)","COPA (NSQF)"] },
+    { name: "Govt. ITI Marath", code: "GU32000660", trades: ["Electrician (NSQF)","Electronics Mechanic (NSQF)","Welder (NSQF)"] },
+    { name: "Govt. ITI Thuravur Angamaly", code: "GR32000681", trades: ["Plumber (NSQF)"] }
+  ],
+  "Thrissur": [
+    { name: "Govt. ITI Chalakkudy", code: "GR32000223", trades: ["Draughtsman Civil (NSQF)","Draughtsman Mechanic (NSQF)","Fitter (NSQF)","Turner (NSQF)","Machinist (NSQF)","Electrician (NSQF)","Surveyor (NSQF)","Electrician (NSQF) (LWF)","COPA (NSQF)","Refrigeration & AC Technician (NSQF) (SCP)","Technician Medical Electronics (NSQF)","Mechanic Autobody Painting (NSQF)","Technician Power Electronics Systems (NSQF) (LWF)","Mechanic Motor Vehicle (NSQF)","Sheet Metal Worker (NSQF)","Welder Welding & Inspection (NSQF)","Plumber (NSQF)","Welder (NSQF)","Wood Work Technician (NSQF)","Wireman (NSQF)","Welder (NSQF)","Painter General (NSQF)","Wireman (NSQF)"] },
+    { name: "Govt. ITI (Vanitha) Chalakkudy", code: "GR32000352", trades: ["Electronics Mechanic (NSQF)","COPA (NSQF)","Draughtsman Civil (NSQF)","Fashion Design & Technology (NSQF)","Interior Design & Decoration (NSQF)"] },
+    { name: "Govt. ITI Cherpu", code: "GR32000661", trades: ["Electrician (NSQF)","Surveyor (NSQF)"] },
+    { name: "Govt. ITI Deshamangalam", code: "GR32000642", trades: ["Electrician (NSQF)","Draughtsman Civil (NSQF)"] },
+    { name: "Govt. ITI Eriyad", code: "GR32000630", trades: ["COPA (NSQF)","Draughtsman Civil (NSQF)"] },
+    { name: "Govt. ITI Manalur", code: "GR32000641", trades: ["Draughtsman Civil (NSQF)","Mechanic Motor Vehicle (NSQF)"] },
+    { name: "KM Memorial Govt. ITI Mala Kuruvilassery", code: "GR32000311", trades: ["Draughtsman Civil (NSQF)","Refrigeration & AC Technician (NSQF)","Mechanic Motor Vehicle (NSQF)","Mechanic Lens / Prism Grinding (NSQF)","Refrigeration & AC Technician (NSQF)","Interior Design & Decoration (NSQF)","Computer Hardware & NW Maintenance (NSQF)","Technician Power Electronics Systems (NSQF)","Mechanic Motor Vehicle (NSQF)","Surveyor (NSQF)","Wood Work Technician (NSQF)","Welder (NSQF)","Plumber (NSQF)"] }
+  ],
+  "Palakkad": [
+    { name: "Govt. ITI Malampuzha", code: "GR32000236", trades: ["Electrician (NSQF)","Electrician (NSQF) (LWF)","Electronics Mechanic (NSQF)","Machinist (NSQF)","Instrument Mechanic (NSQF)","Fitter (NSQF)","Turner (NSQF)","Surveyor (NSQF)","Mechanic Diesel (NSQF)","Mechanic Motor Vehicle (NSQF)","Stenographer Secretarial Assistant English (NSQF)","COPA (NSQF)","Technician Power Electronics Systems (NSQF) (SCP)","Mechanic Motor Vehicle (NSQF)","Sheet Metal Worker (NSQF)","Wood Work Technician (NSQF)","Wireman (NSQF)","Welder (NSQF)","Painter General (NSQF)"] },
+    { name: "Govt. ITI (Vanitha) Malampuzha", code: "GR32000347", trades: ["Electronics Mechanic (NSQF)","COPA (NSQF)","Draughtsman Civil (NSQF)","Mechanic Consumer Electronics Appliances (NSQF)","Fashion Design & Technology (NSQF)","ICT System Maintenance (NSQF)"] },
+    { name: "Govt. ITI Attappady", code: "GR32000512", trades: ["Mechanic Diesel (NSQF)","Draughtsman Civil (NSQF)","Electrician (NSQF)","Mechanic Motor Vehicle (NSQF)","Welder (NSQF)"] },
+    { name: "Govt. ITI Vaniyamkulam", code: "GR32000574", trades: ["Draughtsman Civil (NSQF)","Fashion Design & Technology (NSQF)"] },
+    { name: "Govt. ITI Kuzhalmandam", code: "GR32000029", trades: ["Fitter (NSQF)","Electrician (NSQF)","Electronics Mechanic (NSQF)","Refrigeration & AC Technician (NSQF)","Mechanic Motor Vehicle (NSQF)","Welder (NSQF)"] },
+    { name: "Laffanant Neranjjan Govt. ITI Elumbulaschery", code: "GR32000662", trades: ["Draughtsman Civil (NSQF)","Plumber (NSQF)"] },
+    { name: "Govt. ITI Kozhinjampara", code: "GR32000631", trades: ["Fitter (NSQF)","Electrician (NSQF)","Plumber (NSQF)"] },
+    { name: "Govt. ITI Nenmara", code: "GR32000633", trades: ["COPA (NSQF)","Draughtsman Civil (NSQF)","Welder (NSQF)"] },
+    { name: "Govt. ITI Perumatti", code: "GR32000663", trades: ["Draughtsman Civil (NSQF)","Mechanic Agricultural Machinery (NSQF)"] }
+  ],
+  "Malappuram": [
+    { name: "Govt. ITI Areekode", code: "GR32000247", trades: ["Surveyor (NSQF)","Draughtsman Civil (NSQF)","Draughtsman Civil (NSQF) (LWF)","Electrician (NSQF)","Fitter (NSQF)","Refrigeration & AC Technician (NSQF)","COPA (NSQF)","Stenographer Secretarial Assistant English (NSQF)","Refrigeration & AC Technician (NSQF)","Lift & Escalator Mechanic (NSQF)","Technician Power Electronics Systems (NSQF)","Mechanic Motor Vehicle (NSQF)","Welder (NSQF)","Wood Work Technician (NSQF)","Plumber (NSQF)","Wireman (NSQF)"] },
+    { name: "Govt. ITI Nilampur", code: "GR32000422", trades: ["Electronics Mechanic (NSQF)","Fitter (NSQF)","Electrician (NSQF)","Draughtsman Civil (NSQF)","Welder (NSQF)"] },
+    { name: "Govt. ITI Puzhakkattiri", code: "GR32000573", trades: ["Draughtsman Civil (NSQF)","Electrician (NSQF)"] },
+    { name: "Govt. ITI (Vanitha) Thazhekode", code: "GR32000665", trades: ["Draughtsman Civil (NSQF)","Electronics Mechanic (NSQF)"] },
+    { name: "Govt. ITI Cheriyamundam", code: "GR32000664", trades: ["Draughtsman Civil (NSQF)","Electrician (NSQF)","Mechanic Diesel (NSQF)"] },
+    { name: "Govt. ITI Maranchery", code: "GR32000637", trades: ["Electrician (NSQF)","Desktop Publishing Operator (NSQF)"] },
+    { name: "Govt. ITI Vazhakkad", code: "GR32000687", trades: ["Electrician (NSQF)","Draughtsman Civil (NSQF)","Plumber (NSQF)","Welder (NSQF)"] },
+    { name: "Govt. ITI Kozhikode", code: "GR32000238", trades: ["Refrigeration & AC Technician (NSQF) (LWF)","Refrigeration & AC Technician (NSQF) (SCP)","Turner (NSQF)","Surveyor (NSQF)","Electronics Mechanic (NSQF)","Machinist (NSQF)","Draughtsman Civil (NSQF)","Stenographer Secretarial Assistant English (NSQF)","Machinist (NSQF)","Mechanic Motor Vehicle (NSQF)","Mechanic Consumer Electronics Appliances (NSQF)","Mechanic Motor Vehicle (NSQF)","Surveyor (NSQF)","Welder (NSQF)","Sheet Metal Worker (NSQF)","Plumber (NSQF)","Wood Work Technician (NSQF)","Welder GMAW & GTAW (NSQF)","Welder Welding & Inspection (NSQF)","Welder Structural (NSQF)"] }
+  ],
+  "Kozhikode": [
+    { name: "Govt. ITI (Vanitha) Kozhikode", code: "GR32000613", trades: ["Electronics Mechanic (NSQF)","Desktop Publishing Operator (NSQF)","COPA (NSQF)","Fashion Design & Technology (NSQF)","Front Office Assistant (NSQF)","Computer Hardware & NW Maintenance (NSQF)","Interior Design & Decoration (NSQF)","ICT System Maintenance (NSQF)","Cosmetology (NSQF)","Draughtsman Civil (NSQF)"] },
+    { name: "Govt. ITI Koyilandy", code: "GR32000332", trades: ["Fitter (NSQF)","Electronics Mechanic (NSQF)","Desktop Publishing Operator (NSQF)","COPA (NSQF)","Computer Hardware & NW Maintenance (NSQF)","Multimedia Animation & Special Effects (NSQF)","ICT System Maintenance (NSQF)","Hospitality House Keeping (NSQF)","Mechanic Diesel (NSQF)","Mechanic Auto Electrical & Electronics (NSQF)"] },
+    { name: "Govt. ITI Thiruvambady", code: "GR32000666", trades: ["Draughtsman Civil (NSQF)","Electrician (NSQF)","Plumber (NSQF)"] },
+    { name: "Govt. ITI Vadakara", code: "GR32000626", trades: ["Draughtsman Civil (NSQF)","Electrician (NSQF)","Plumber (NSQF)"] },
+    { name: "Govt. ITI Peramra", code: "GR32000644", trades: ["Draughtsman Civil (NSQF)","COPA (NSQF)","Mechanic Agricultural Machinery (NSQF)","Mechanic Motor Vehicle (NSQF)"] },
+    { name: "Govt. ITI Valayam", code: "GR32000646", trades: ["Draughtsman Civil (NSQF)","Electrician (NSQF)"] },
+    { name: "Govt. ITI Beypore", code: "GU32000625", trades: ["Draughtsman Civil (NSQF)","Hospitality House Keeping (NSQF)"] },
+    { name: "Govt. ITI Chathamangalam", code: "GR32000669", trades: ["Draughtsman Civil (NSQF)","Surveyor (NSQF)"] },
+    { name: "Govt. ITI Koduvally", code: "GU32000668", trades: ["Draughtsman Civil (NSQF)"] },
+    { name: "Govt. ITI Maniur", code: "GR32000624", trades: ["Draughtsman Civil (NSQF)","Electrician (NSQF)","Welder (NSQF)"] },
+    { name: "Govt. ITI Narippatta", code: "GR32000667", trades: ["Refrigeration & AC Technician (NSQF)","Fitter (NSQF)"] }
+  ],
+  "Wayanad": [
+    { name: "KAO MMO Govt. ITI Kalpetta", code: "GR32000307", trades: ["Draughtsman Civil (NSQF)","Refrigeration & AC Technician (NSQF)","Mechanic Motor Vehicle (NSQF)","Mechanic Diesel (NSQF)","Food Production General (NSQF)","Food & Beverage Service Assistant (NSQF)","Front Office Assistant (NSQF)","Baker & Confectioner (NSQF)","COPA (NSQF)","Plumber (NSQF)"] },
+    { name: "Govt. ITI (Vanitha) Nenmeni", code: "GR32000670", trades: ["Draughtsman Civil (NSQF)","Fashion Design & Technology (NSQF)"] },
+    { name: "Govt. ITI Vellamuanda", code: "GR32000682", trades: ["Plumber (NSQF)"] }
+  ],
+  "Kannur": [
+    { name: "Govt. ITI Kannur", code: "GR32000212", trades: ["Draughtsman Civil (NSQF)","Draughtsman Mechanic (NSQF)","Electrician (NSQF)","Surveyor (NSQF)","Refrigeration & AC Technician (NSQF)","Refrigeration & AC Technician (NSQF) (SCP)","Instrument Mechanic (NSQF)","Fitter (NSQF)","Turner (NSQF)","Machinist (NSQF)","Electronics Mechanic (NSQF)","Electronics Mechanic (NSQF) (LWF)","Technician Mechatronics (NSQF)","Mechanic Motor Vehicle (NSQF)","Technician Power Electronics Systems (NSQF)","Welder GMAW & GTAW (NSQF)","Welder Structural (NSQF)","Welder Welding & Inspection (NSQF)","Plumber (NSQF)","Wood Work Technician (NSQF)","Wireman (NSQF)","Welder (NSQF)","Sheet Metal Worker (NSQF)"] },
+    { name: "Govt. ITI (Vanitha) Kannur", code: "GR32000350", trades: ["Draughtsman Civil (NSQF)","Electronics Mechanic (NSQF)","COPA (NSQF)","ICT System Maintenance (NSQF)","Fashion Design & Technology (NSQF)"] },
+    { name: "Govt. ITI Kurumathoor", code: "GR32000635", trades: ["Electronics Mechanic (NSQF)","Mechanic Agricultural Machinery (NSQF)"] },
+    { name: "Govt. ITI Kuthupparambu", code: "GU32000623", trades: ["Draughtsman Civil (NSQF)","Fitter (NSQF)","COPA (NSQF)"] },
+    { name: "Govt. ITI Madayi", code: "GR32000634", trades: ["COPA (NSQF)","Electrician (NSQF)","Draughtsman Civil (NSQF)"] },
+    { name: "Govt. ITI Peravur", code: "GR32000632", trades: ["Draughtsman Civil (NSQF)","Mechanic Motor Vehicle (NSQF)"] },
+    { name: "Govt. ITI Padiyur", code: "GR32000671", trades: ["Fitter (NSQF)"] },
+    { name: "Govt. ITI Peringome", code: "GR32000673", trades: ["Mechanic Motor Vehicle (NSQF)","Welder (NSQF)"] },
+    { name: "Govt. ITI Pinarayi", code: "GR32000672", trades: ["Mechanic Motor Vehicle (NSQF)","Fitter (NSQF)","Electrician (NSQF)"] },
+    { name: "Govt. ITI Pannyannur", code: "GR32000674", trades: ["Mechanic Motor Vehicle (NSQF)","Draughtsman Civil (NSQF)","Electrician (NSQF)","Welder (NSQF)"] }
+  ],
+  "Kasaragod": [
+    { name: "Govt. ITI Kasaragod", code: "GR32000107", trades: ["Draughtsman Civil (NSQF)","Surveyor (NSQF)","Electronics Mechanic (NSQF)","Draughtsman Civil (NSQF)","Electrician (NSQF)","ICT System Maintenance (NSQF)","Multimedia Animation & Special Effects (NSQF)","Electrician (NSQF)","Mechanic Diesel (NSQF)","Refrigeration & AC Technician (NSQF)","Welder (NSQF)","Plumber (NSQF)"] },
+    { name: "Govt. ITI Kayyur", code: "GR32000441", trades: ["Mechanic Diesel (NSQF)","Electronics Mechanic (NSQF)","COPA (NSQF)","Front Office Assistant (NSQF)","Draughtsman Civil (NSQF)","Electrician (NSQF)","Computer Hardware & NW Maintenance (NSQF)","Mechanic Motor Vehicle (NSQF)","Technician Power Electronics Systems (NSQF)","Fitter (NSQF)","Refrigeration & AC Technician (NSQF)","Plumber (NSQF)","Welder (NSQF)"] },
+    { name: "Govt. ITI Madikkai", code: "GR32000629", trades: ["Draughtsman Civil (NSQF)","Welder (NSQF)"] },
+    { name: "Govt. ITI Pulluor", code: "GR32000636", trades: ["Electrician (NSQF)","Mechanic Motor Vehicle (NSQF)"] },
+    { name: "Govt. ITI Seethamgoli", code: "GR32000675", trades: ["Draughtsman Civil (NSQF)","Welder (NSQF)"] },
+    { name: "Baby John Govt. ITI (Vanitha) Westeleri", code: "GR32000676", trades: ["Draughtsman Civil (NSQF)","Desktop Publishing Operator (NSQF)","Fashion Design & Technology (NSQF)"] },
+    { name: "Govt. ITI Kodatom-Belur", code: "GR32000677", trades: ["COPA (NSQF)","Plumber (NSQF)"] },
+    { name: "Govt. ITI Pilicode", code: "GR32000679", trades: ["Draughtsman Civil (NSQF)","Welder (NSQF)"] },
+    { name: "Govt. ITI Kuttikeol", code: "GR32000678", trades: ["Draughtsman Civil (NSQF)","Electronics Mechanic (NSQF)"] }
+  ]
+};
+
+// NSQF 14 Documents
+const NSQF_DOCS = [
+  "Lesson Plan","Demonstration Plan","Information Sheet","Job Sheet",
+  "Annexure II","Annexure III","Trainer's Observation & Evidence Report",
+  "On Job Training Register","Split-up Syllabus – Skill",
+  "Split-up Syllabus – Theory WCS ED & ES","Program of Coaching – Skill",
+  "Program of Coaching – Theory WCS ED & ES","Project Planning Register","Progress Card"
+];
+
+// Default Registers & Safety
+const DEFAULT_REG = [
+  "Stock Register","Consumable Register",
+  "Fire Extinguisher – Availability","Fire Extinguisher – Condition"
+];
+
+// ================================================================
+// STATE
+// ================================================================
+let customItems = [];   // items in current checklist
+let editingId = null;   // inspection id being edited
+
+// ================================================================
+// INIT
+// ================================================================
+document.addEventListener('DOMContentLoaded', () => {
+  // Set today's date
+  const today = new Date();
+  document.getElementById('insp-date').value = today.toLocaleDateString('en-IN', {day:'2-digit',month:'2-digit',year:'numeric'});
+
+  // Populate district dropdown
+  const distSel = document.getElementById('sel-district');
+  Object.keys(ITI_DATA).sort().forEach(d => {
+    const o = document.createElement('option');
+    o.value = d; o.textContent = d;
+    distSel.appendChild(o);
+
+    // Also add to history filter
+    const o2 = document.createElement('option');
+    o2.value = d; o2.textContent = d;
+    document.getElementById('hist-filter-district').appendChild(o2);
+  });
+
+  loadProfile();
+  loadDefaultCustomItems();
+  renderHistory();
+});
+
+// ================================================================
+// NAVIGATION
+// ================================================================
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  if (name === 'history') renderHistory();
+  if (name === 'profile') loadDefaultCustomItems();
+  // Highlight active nav button (find by onclick)
+  document.querySelectorAll('.nav-btn').forEach(b => {
+    if (b.getAttribute('onclick') && b.getAttribute('onclick').includes("'"+name+"'")) b.classList.add('active');
+  });
+}
+
+// ================================================================
+// CASCADING DROPDOWNS
+// ================================================================
+function loadITIs() {
+  const district = document.getElementById('sel-district').value;
+  const itiSel = document.getElementById('sel-iti');
+  const tradeSel = document.getElementById('sel-trade');
+  itiSel.innerHTML = '<option value="">-- Select ITI --</option>';
+  tradeSel.innerHTML = '<option value="">-- Select ITI First --</option>';
+  itiSel.disabled = true;
+  tradeSel.disabled = true;
+  document.getElementById('checklist-card').style.display = 'none';
+  document.getElementById('staff-card').style.display = 'none';
+  document.getElementById('shift-unit-row').style.display = 'none';
+
+  if (!district) return;
+  const itis = ITI_DATA[district] || [];
+  itis.forEach((iti, idx) => {
+    const o = document.createElement('option');
+    o.value = idx;
+    o.textContent = iti.name;
+    itiSel.appendChild(o);
+  });
+  itiSel.disabled = false;
+}
+
+function loadTrades() {
+  const district = document.getElementById('sel-district').value;
+  const itiIdx = document.getElementById('sel-iti').value;
+  const tradeSel = document.getElementById('sel-trade');
+  tradeSel.innerHTML = '<option value="">-- Select Trade --</option>';
+  tradeSel.disabled = true;
+  document.getElementById('checklist-card').style.display = 'none';
+  document.getElementById('staff-card').style.display = 'none';
+  document.getElementById('shift-unit-row').style.display = 'none';
+
+  if (itiIdx === '') return;
+  const iti = ITI_DATA[district][parseInt(itiIdx)];
+  iti.trades.forEach(t => {
+    const o = document.createElement('option');
+    o.value = t; o.textContent = t;
+    tradeSel.appendChild(o);
+  });
+  tradeSel.disabled = false;
+  tradeSel.onchange = function() {
+    // Reset shift/unit when trade changes
+    document.getElementById('sel-shift').value = '';
+    document.getElementById('sel-unit').value = '';
+    document.getElementById('shift-unit-row').style.display = tradeSel.value ? 'block' : 'none';
+    loadChecklist();
+  };
+}
+
+function loadChecklist() {
+  const district = document.getElementById('sel-district').value;
+  const itiIdx = document.getElementById('sel-iti').value;
+  const trade = document.getElementById('sel-trade').value;
+  if (!trade) return;
+
+  const iti = ITI_DATA[district][parseInt(itiIdx)];
+  function updateChkTitle() {
+    const sh = document.getElementById('sel-shift').value;
+    const un = document.getElementById('sel-unit').value;
+    const extra = [sh, un].filter(Boolean).join(' / ');
+    document.getElementById('chk-title').textContent = `📋 ${iti.name} — ${trade}${extra ? ' (' + extra + ')' : ''}`;
+  }
+  updateChkTitle();
+  document.getElementById('sel-shift').onchange = updateChkTitle;
+  document.getElementById('sel-unit').onchange  = updateChkTitle;
+  document.getElementById('checklist-card').style.display = 'block';
+
+  // Load default custom items from profile settings
+  const saved = JSON.parse(localStorage.getItem('defaultCustomItems') || '[]');
+  customItems = saved.map(n => ({ name: n, status: '', remark: '' }));
+
+  // Show staff card and clear fields
+  document.getElementById('staff-card').style.display = 'block';
+  ['staff-instructor','staff-instructor-desig','staff-attendant','staff-others','staff-remarks'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+
+  renderNSQF();
+  renderRegItems();
+  renderCustomItems();
+  updateSummary();
+}
+
+// ================================================================
+// RENDER CHECKLIST SECTIONS
+// ================================================================
+function renderNSQF() {
+  const container = document.getElementById('nsqf-items');
+  container.innerHTML = '';
+  NSQF_DOCS.forEach((doc, i) => {
+    container.appendChild(createCheckRow('nsqf', i, doc));
+  });
+}
+
+function renderRegItems() {
+  const container = document.getElementById('reg-items');
+  container.innerHTML = '';
+  DEFAULT_REG.forEach((r, i) => {
+    container.appendChild(createCheckRow('reg', i, r));
+  });
+}
+
+function renderCustomItems() {
+  const container = document.getElementById('custom-items');
+  container.innerHTML = '';
+  customItems.forEach((item, i) => {
+    container.appendChild(createCheckRow('custom', i, item.name, true));
+  });
+  document.getElementById('custom-count').textContent = customItems.length;
+}
+
+function createCheckRow(section, idx, name, deletable = false) {
+  const div = document.createElement('div');
+  div.className = 'chk-row';
+  div.id = `row-${section}-${idx}`;
+
+  const status = getStatus(section, idx);
+  div.innerHTML = `
+    <div class="chk-top">
+      <span class="chk-name">${idx + 1}. ${name}</span>
+      <div class="status-toggle">
+        <button onclick="setStatus('${section}',${idx},'yes')" class="${status==='yes'?'sel-yes':''}">✅ Yes</button>
+        <button onclick="setStatus('${section}',${idx},'no')"  class="${status==='no'?'sel-no':''}">❌ No</button>
+        <button onclick="setStatus('${section}',${idx},'nu')"  class="${status==='nu'?'sel-nu':''}">⚠️ N/U</button>
+      </div>
+      ${deletable ? `<button class="chk-delete no-print" title="Remove item" onclick="removeCustom(${idx})">🗑</button>` : ''}
+    </div>
+    <div class="chk-remark">
+      <input type="text" placeholder="Remark (optional)" id="remark-${section}-${idx}" value="${getRemark(section,idx)}" oninput="updateSummary()">
+    </div>
+  `;
+  return div;
+}
+
+// ================================================================
+// STATUS MANAGEMENT (uses DOM as source of truth)
+// ================================================================
+const statusMap = {};
+
+function getStatus(s, i) { return (statusMap[`${s}-${i}`] || {}).status || ''; }
+function getRemark(s, i) { return (statusMap[`${s}-${i}`] || {}).remark || ''; }
+
+function setStatus(section, idx, val) {
+  const key = `${section}-${idx}`;
+  if (!statusMap[key]) statusMap[key] = {};
+  statusMap[key].status = val;
+
+  // Update toggle buttons
+  const row = document.getElementById(`row-${section}-${idx}`);
+  if (!row) return;
+  const btns = row.querySelectorAll('.status-toggle button');
+  btns.forEach(b => { b.className = ''; });
+  const labels = ['yes','no','nu'];
+  btns.forEach((b, i) => { if (labels[i] === val) b.className = `sel-${val}`; });
+  updateSummary();
+}
+
+function updateSummary() {
+  let yes=0, no=0, nu=0;
+  // Count NSQF
+  NSQF_DOCS.forEach((_, i) => {
+    const s = getStatus('nsqf', i);
+    if (s==='yes') yes++; else if (s==='no') no++; else if (s==='nu') nu++;
+  });
+  // Count Reg
+  DEFAULT_REG.forEach((_, i) => {
+    const s = getStatus('reg', i);
+    if (s==='yes') yes++; else if (s==='no') no++; else if (s==='nu') nu++;
+  });
+  // Count custom
+  customItems.forEach((_, i) => {
+    const s = getStatus('custom', i);
+    if (s==='yes') yes++; else if (s==='no') no++; else if (s==='nu') nu++;
+  });
+  const tot = NSQF_DOCS.length + DEFAULT_REG.length + customItems.length;
+  document.getElementById('cnt-yes').textContent = yes;
+  document.getElementById('cnt-no').textContent  = no;
+  document.getElementById('cnt-nu').textContent  = nu;
+  document.getElementById('cnt-tot').textContent = tot;
+}
+
+// ================================================================
+// CUSTOM ITEMS
+// ================================================================
+function addCustomItem() {
+  const inp = document.getElementById('new-item-name');
+  const name = inp.value.trim();
+  if (!name) return;
+  customItems.push({ name, status: '', remark: '' });
+  inp.value = '';
+  renderCustomItems();
+  updateSummary();
+}
+
+function removeCustom(idx) {
+  customItems.splice(idx, 1);
+  // Clear statusMap for custom items above idx
+  for (let i = idx; i <= customItems.length; i++) {
+    delete statusMap[`custom-${i}`];
+  }
+  renderCustomItems();
+  updateSummary();
+}
+
+// ================================================================
+// COLLECT ALL DATA FROM FORM
+// ================================================================
+function collectInspectionData() {
+  const district = document.getElementById('sel-district').value;
+  const itiIdx   = document.getElementById('sel-iti').value;
+  const trade    = document.getElementById('sel-trade').value;
+  const date     = document.getElementById('insp-date').value;
+  if (!district || itiIdx === '' || !trade) return null;
+  const iti = ITI_DATA[district][parseInt(itiIdx)];
+
+  const prof = JSON.parse(localStorage.getItem('inspectorProfile') || '{}');
+
+  const shift = document.getElementById('sel-shift').value;
+  const unit  = document.getElementById('sel-unit').value;
+
+  const staff = {
+    instructor:      document.getElementById('staff-instructor')?.value.trim() || '',
+    instructorDesig: document.getElementById('staff-instructor-desig')?.value.trim() || '',
+    attendant:       document.getElementById('staff-attendant')?.value.trim() || '',
+    others:          document.getElementById('staff-others')?.value.trim() || '',
+    remarks:         document.getElementById('staff-remarks')?.value.trim() || ''
+  };
+
+  const nsqf = NSQF_DOCS.map((name, i) => ({
+    name,
+    status: getStatus('nsqf', i) || (document.getElementById(`remark-nsqf-${i}`)?.value ? 'nu' : ''),
+    remark: document.getElementById(`remark-nsqf-${i}`)?.value || ''
+  }));
+  const reg = DEFAULT_REG.map((name, i) => ({
+    name,
+    status: getStatus('reg', i) || '',
+    remark: document.getElementById(`remark-reg-${i}`)?.value || ''
+  }));
+  const custom = customItems.map((item, i) => ({
+    name: item.name,
+    status: getStatus('custom', i) || '',
+    remark: document.getElementById(`remark-custom-${i}`)?.value || ''
+  }));
+
+  return { district, itiName: iti.name, itiCode: iti.code, trade, shift, unit, date, inspector: prof, staff, nsqf, reg, custom };
+}
+
+// ================================================================
+// SAVE INSPECTION
+// ================================================================
+function saveInspection() {
+  const data = collectInspectionData();
+  if (!data) { alert('Please select District, ITI and Trade first.'); return; }
+
+  const history = JSON.parse(localStorage.getItem('inspectionHistory') || '[]');
+  const id = Date.now().toString();
+  history.unshift({ id, ...data, savedAt: new Date().toLocaleString('en-IN') });
+  localStorage.setItem('inspectionHistory', JSON.stringify(history));
+  alert('✅ Inspection saved successfully!');
+  renderHistory();
+}
+
+// ================================================================
+// PRINT REPORT
+// ================================================================
+function printReport() {
+  const data = collectInspectionData();
+  if (!data) { alert('Please select District, ITI and Trade first.'); return; }
+  openPrintView(data);
+}
+
+function openPrintView(data) {
+  const w = window.open('', '_blank');
+  w.document.write(buildReportHTML(data));
+  w.document.close();
+  w.focus();
+  setTimeout(() => w.print(), 600);
+}
+
+function statusLabel(s) {
+  if (s === 'yes') return '<span style="color:#065f46;font-weight:700;">✅ Available</span>';
+  if (s === 'no')  return '<span style="color:#991b1b;font-weight:700;">❌ Not Available</span>';
+  if (s === 'nu')  return '<span style="color:#92400e;font-weight:700;">⚠️ Not Updated</span>';
+  return '<span style="color:#6b7280;">— Not Marked</span>';
+}
+
+function buildReportHTML(data) {
+  const prof = data.inspector || {};
+  let rows = '';
+  let sno = 1;
+  const all = [
+    { section: 'A — NSQF Documents', items: data.nsqf },
+    { section: 'B — Registers & Safety', items: data.reg },
+    { section: 'C — Additional Items', items: data.custom }
+  ];
+  all.forEach(sec => {
+    if (!sec.items || !sec.items.length) return;
+    rows += `<tr><td colspan="4" style="background:#e0e7ff;font-weight:700;padding:7px 10px;color:#1e3a8a;">Section ${sec.section}</td></tr>`;
+    sec.items.forEach(item => {
+      rows += `<tr>
+        <td style="text-align:center;width:40px;">${sno++}</td>
+        <td style="padding:6px 8px;">${item.name}</td>
+        <td style="text-align:center;white-space:nowrap;">${statusLabel(item.status)}</td>
+        <td style="padding:6px 8px;font-size:12px;color:#374151;">${item.remark || ''}</td>
+      </tr>`;
+    });
+  });
+
+  let yes=0,no=0,nu=0,tot=0;
+  all.forEach(sec => { (sec.items||[]).forEach(i => { tot++; if(i.status==='yes')yes++; else if(i.status==='no')no++; else if(i.status==='nu')nu++; }); });
+
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>ITI Inspection Report</title>
+  <style>
+    body { font-family: Arial, sans-serif; font-size: 13px; color: #111; margin: 0; padding: 20px; }
+    h1 { text-align: center; font-size: 16px; margin-bottom: 2px; }
+    h2 { text-align: center; font-size: 14px; color: #1e3a8a; margin-bottom: 14px; }
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 20px; border: 1px solid #ccc; padding: 12px; border-radius: 6px; margin-bottom: 14px; background: #f8fafc; }
+    .info-row { display: flex; gap: 6px; font-size: 12px; }
+    .info-row strong { min-width: 120px; color: #374151; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { background: #1e429f; color: #fff; padding: 7px 8px; text-align: left; }
+    td { border: 1px solid #d1d5db; padding: 5px 8px; vertical-align: middle; }
+    tr:nth-child(even) td { background: #f9fafb; }
+    .summary { display: flex; gap: 10px; margin: 12px 0; flex-wrap: wrap; }
+    .pill { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+    .pill-y { background: #d1fae5; color: #065f46; }
+    .pill-n { background: #fee2e2; color: #991b1b; }
+    .pill-u { background: #fef3c7; color: #92400e; }
+    .pill-t { background: #e0e7ff; color: #3730a3; }
+    .footer { margin-top: 30px; display: flex; justify-content: flex-end; }
+    .sign-box { text-align: center; border-top: 1px solid #374151; padding-top: 6px; min-width: 160px; font-size: 12px; }
+    @media print { body { padding: 10px; } }
+  </style></head><body>
+  <h1>Government of Kerala — Directorate of Employment & Training</h1>
+  <h2>ITI Inspection Report</h2>
+  <div class="info-grid">
+    <div class="info-row"><strong>ITI Name:</strong> ${data.itiName}</div>
+    <div class="info-row"><strong>ITI Code:</strong> ${data.itiCode}</div>
+    <div class="info-row"><strong>District:</strong> ${data.district}</div>
+    <div class="info-row"><strong>Trade:</strong> ${data.trade}</div>
+    <div class="info-row"><strong>Shift:</strong> ${data.shift || '—'}</div>
+    <div class="info-row"><strong>Unit:</strong> ${data.unit || '—'}</div>
+    <div class="info-row"><strong>Inspection Date:</strong> ${data.date}</div>
+    <div class="info-row"><strong>Inspector Name:</strong> ${prof.name || '—'}</div>
+    <div class="info-row"><strong>Designation:</strong> ${prof.desig || '—'}</div>
+    <div class="info-row"><strong>Office:</strong> ${prof.office || '—'}</div>
+  </div>
+  ${(data.staff && (data.staff.instructor || data.staff.attendant || data.staff.others)) ? `
+  <div style="border:1px solid #ccc;border-radius:6px;padding:10px 12px;margin-bottom:14px;background:#f0f4ff;">
+    <div style="font-weight:700;font-size:13px;color:#1e3a8a;margin-bottom:7px;">👥 Staff Present During Inspection</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 20px;font-size:12px;">
+      ${data.staff.instructor ? `<div><strong>Instructor:</strong> ${data.staff.instructor}</div>` : ''}
+      ${data.staff.instructorDesig ? `<div><strong>Designation/Trade:</strong> ${data.staff.instructorDesig}</div>` : ''}
+      ${data.staff.attendant ? `<div><strong>Workshop Attendant:</strong> ${data.staff.attendant}</div>` : ''}
+      ${data.staff.others ? `<div style="grid-column:1/-1;"><strong>Other Staff:</strong> ${data.staff.others}</div>` : ''}
+      ${data.staff.remarks ? `<div style="grid-column:1/-1;"><strong>General Remarks:</strong> ${data.staff.remarks}</div>` : ''}
+    </div>
+  </div>` : ''}
+  <div class="summary">
+    <span class="pill pill-y">✅ Available: ${yes}</span>
+    <span class="pill pill-n">❌ Not Available: ${no}</span>
+    <span class="pill pill-u">⚠️ Not Updated: ${nu}</span>
+    <span class="pill pill-t">📋 Total: ${tot}</span>
+  </div>
+  <table>
+    <tr><th style="width:40px;">#</th><th>Item</th><th style="width:150px;">Status</th><th>Remark</th></tr>
+    ${rows}
+  </table>
+  <div class="footer"><div class="sign-box">${prof.name || 'Inspector'}<br>${prof.desig || ''}</div></div>
+  </body></html>`;
+}
+
+// ================================================================
+// RESET FORM
+// ================================================================
+function resetForm() {
+  if (!confirm('Reset all checklist entries?')) return;
+  Object.keys(statusMap).forEach(k => delete statusMap[k]);
+  document.getElementById('sel-district').value = '';
+  document.getElementById('sel-iti').innerHTML = '<option value="">-- Select District First --</option>';
+  document.getElementById('sel-iti').disabled = true;
+  document.getElementById('sel-trade').innerHTML = '<option value="">-- Select ITI First --</option>';
+  document.getElementById('sel-trade').disabled = true;
+  document.getElementById('checklist-card').style.display = 'none';
+  document.getElementById('staff-card').style.display = 'none';
+  customItems = [];
+}
+
+// ================================================================
+// INSPECTOR PROFILE
+// ================================================================
+function saveProfile() {
+  const prof = {
+    name:   document.getElementById('prof-name').value.trim(),
+    desig:  document.getElementById('prof-desig').value.trim(),
+    office: document.getElementById('prof-office').value.trim(),
+    phone:  document.getElementById('prof-phone').value.trim(),
+    email:  document.getElementById('prof-email').value.trim()
+  };
+  localStorage.setItem('inspectorProfile', JSON.stringify(prof));
+  const msg = document.getElementById('prof-msg');
+  msg.textContent = '✅ Profile saved successfully!';
+  msg.style.display = 'block';
+  setTimeout(() => msg.style.display = 'none', 2500);
+}
+
+function loadProfile() {
+  const prof = JSON.parse(localStorage.getItem('inspectorProfile') || '{}');
+  document.getElementById('prof-name').value  = prof.name   || '';
+  document.getElementById('prof-desig').value = prof.desig  || '';
+  document.getElementById('prof-office').value= prof.office || '';
+  document.getElementById('prof-phone').value = prof.phone  || '';
+  document.getElementById('prof-email').value = prof.email  || '';
+}
+
+// ================================================================
+// DEFAULT CUSTOM ITEMS (from Profile page)
+// ================================================================
+function loadDefaultCustomItems() {
+  const items = JSON.parse(localStorage.getItem('defaultCustomItems') || '[]');
+  const container = document.getElementById('default-custom-list');
+  container.innerHTML = '';
+  items.forEach((name, i) => {
+    const div = document.createElement('div');
+    div.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:7px;';
+    div.innerHTML = `<span style="flex:1;font-size:13px;padding:6px 8px;background:#f3f4f6;border-radius:6px;">${name}</span>
+      <button class="btn btn-danger btn-xs" onclick="removeDefaultItem(${i})">Remove</button>`;
+    container.appendChild(div);
+  });
+  if (!items.length) container.innerHTML = '<p style="font-size:13px;color:var(--muted);">No default items added yet.</p>';
+}
+
+function addDefaultItem() {
+  const inp = document.getElementById('new-default-item');
+  const name = inp.value.trim();
+  if (!name) return;
+  const items = JSON.parse(localStorage.getItem('defaultCustomItems') || '[]');
+  items.push(name);
+  localStorage.setItem('defaultCustomItems', JSON.stringify(items));
+  inp.value = '';
+  loadDefaultCustomItems();
+}
+
+function removeDefaultItem(idx) {
+  const items = JSON.parse(localStorage.getItem('defaultCustomItems') || '[]');
+  items.splice(idx, 1);
+  localStorage.setItem('defaultCustomItems', JSON.stringify(items));
+  loadDefaultCustomItems();
+}
+
+// ================================================================
+// HISTORY
+// ================================================================
+function renderHistory() {
+  const history = JSON.parse(localStorage.getItem('inspectionHistory') || '[]');
+  const filterDist  = document.getElementById('hist-filter-district')?.value || '';
+  const search = (document.getElementById('hist-search')?.value || '').toLowerCase();
+
+  const filtered = history.filter(r => {
+    if (filterDist && r.district !== filterDist) return false;
+    if (search && !r.itiName.toLowerCase().includes(search) && !r.trade.toLowerCase().includes(search)) return false;
+    return true;
+  });
+
+  const container = document.getElementById('hist-container');
+  if (!filtered.length) {
+    container.innerHTML = '<p class="hist-empty">No inspection records found.</p>';
+    return;
+  }
+
+  let html = `<table class="hist-table">
+    <tr>
+      <th>#</th><th>Date</th><th>District</th><th>ITI</th><th>Trade</th><th>Summary</th><th>Actions</th>
+    </tr>`;
+  filtered.forEach((r, i) => {
+    const all = [...(r.nsqf||[]), ...(r.reg||[]), ...(r.custom||[])];
+    const yes = all.filter(x=>x.status==='yes').length;
+    const no  = all.filter(x=>x.status==='no').length;
+    const nu  = all.filter(x=>x.status==='nu').length;
+    html += `<tr>
+      <td>${i+1}</td>
+      <td>${r.date}</td>
+      <td>${r.district}</td>
+      <td style="font-size:12px;">${r.itiName}</td>
+      <td style="font-size:12px;">${r.trade}${r.shift||r.unit?'<br><span style="color:var(--muted);font-size:11px;">'+(r.shift||'')+(r.shift&&r.unit?' / ':''+(r.unit||''))+'</span>':''}</td>
+      <td>
+        <span style="color:#065f46;font-weight:700;">✅${yes}</span>
+        <span style="color:#991b1b;font-weight:700;margin:0 4px;">❌${no}</span>
+        <span style="color:#92400e;font-weight:700;">⚠️${nu}</span>
+      </td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-primary btn-xs" onclick="viewRecord('${r.id}')">👁 View</button>
+        <button class="btn btn-warning btn-xs" onclick="editRecord('${r.id}')">✏️ Edit</button>
+        <button class="btn btn-outline btn-xs" onclick="printRecord('${r.id}')">🖨️</button>
+        <button class="btn btn-danger btn-xs" onclick="deleteRecord('${r.id}')">🗑</button>
+      </td>
+    </tr>`;
+  });
+  html += '</table>';
+  container.innerHTML = html;
+}
+
+function viewRecord(id) {
+  const history = JSON.parse(localStorage.getItem('inspectionHistory') || '[]');
+  const rec = history.find(r => r.id === id);
+  if (!rec) return;
+
+  const modal = document.getElementById('view-modal');
+  document.getElementById('view-modal-body').innerHTML = `
+    ${buildViewHTML(rec)}
+    <div class="btn-row" style="margin-top:14px;">
+      <button class="btn btn-primary" onclick="printRecord('${rec.id}')">🖨️ Print</button>
+      <button class="btn btn-outline" onclick="closeModal()">Close</button>
+    </div>
+  `;
+  modal.classList.add('open');
+}
+
+function buildViewHTML(rec) {
+  const prof = rec.inspector || {};
+  const shiftUnit = [rec.shift, rec.unit].filter(Boolean).join(' / ');
+  let html = `<h2>📋 ${rec.itiName}<br><small style="font-size:13px;color:var(--muted);">${rec.trade}${shiftUnit?' — '+shiftUnit:''} | ${rec.date}</small></h2>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:12px;font-size:13px;">
+    <div><strong>District:</strong> ${rec.district}</div>
+    <div><strong>Code:</strong> ${rec.itiCode}</div>
+    <div><strong>Shift:</strong> ${rec.shift||'—'}</div>
+    <div><strong>Unit:</strong> ${rec.unit||'—'}</div>
+    <div><strong>Inspector:</strong> ${prof.name||'—'}</div>
+    <div><strong>Designation:</strong> ${prof.desig||'—'}</div>
+  </div>`;
+
+  // Staff block
+  if (rec.staff && (rec.staff.instructor || rec.staff.attendant || rec.staff.others || rec.staff.remarks)) {
+    html += `<div style="border:1px solid #c7d2fe;border-radius:7px;padding:10px 12px;margin-bottom:12px;background:#e0e7ff20;">
+      <div style="font-weight:700;font-size:13px;color:var(--primary-dark);margin-bottom:7px;">👥 Staff Present During Inspection</div>
+      <div style="font-size:12px;display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;">
+        ${rec.staff.instructor ? `<div><strong>Instructor:</strong> ${rec.staff.instructor}</div>` : ''}
+        ${rec.staff.instructorDesig ? `<div><strong>Designation/Trade:</strong> ${rec.staff.instructorDesig}</div>` : ''}
+        ${rec.staff.attendant ? `<div><strong>Workshop Attendant:</strong> ${rec.staff.attendant}</div>` : ''}
+        ${rec.staff.others ? `<div style="grid-column:1/-1;"><strong>Other Staff:</strong> ${rec.staff.others}</div>` : ''}
+        ${rec.staff.remarks ? `<div style="grid-column:1/-1;"><strong>General Remarks:</strong> ${rec.staff.remarks}</div>` : ''}
+      </div>
+    </div>`;
+  }
+
+  const sections = [
+    { title:'Section A — NSQF Documents', items: rec.nsqf },
+    { title:'Section B — Registers & Safety', items: rec.reg },
+    { title:'Section C — Additional Items', items: rec.custom }
+  ];
+  sections.forEach(sec => {
+    if (!sec.items?.length) return;
+    html += `<h3 style="font-size:13px;color:var(--primary-dark);margin:12px 0 6px;">${sec.title}</h3>`;
+    sec.items.forEach((item, i) => {
+      const sc = item.status==='yes'?'yes-bg':item.status==='no'?'no-bg':item.status==='nu'?'nu-bg':'';
+      const sl = item.status==='yes'?'✅ Available':item.status==='no'?'❌ Not Available':item.status==='nu'?'⚠️ Not Updated':'— Not Marked';
+      html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px;border:1px solid var(--border);border-radius:6px;margin-bottom:5px;background:#fafafa;">
+        <span style="font-size:12px;">${i+1}. ${item.name}</span>
+        <span style="font-size:12px;font-weight:700;">${sl}</span>
+      </div>`;
+      if (item.remark) html += `<div style="font-size:11px;color:var(--muted);padding:0 8px 5px;">↳ ${item.remark}</div>`;
+    });
+  });
+  return html;
+}
+
+function editRecord(id) {
+  const history = JSON.parse(localStorage.getItem('inspectionHistory') || '[]');
+  const rec = history.find(r => r.id === id);
+  if (!rec) return;
+  editingId = id;
+
+  const s = rec.staff || {};
+  let html = `<div style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--primary-dark);">${rec.itiName} — ${rec.trade}<br><small style="font-size:12px;color:var(--muted);">${rec.district} | ${rec.date}</small></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+    <div>
+      <label style="font-size:12px;font-weight:600;color:var(--muted);">Shift</label>
+      <select id="edit-shift" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;">
+        <option value="">— Not set —</option>
+        <option value="Morning Shift" ${rec.shift==='Morning Shift'?'selected':''}>Morning Shift</option>
+        <option value="Evening Shift" ${rec.shift==='Evening Shift'?'selected':''}>Evening Shift</option>
+        <option value="Single Shift"  ${rec.shift==='Single Shift'?'selected':''}>Single Shift</option>
+      </select>
+    </div>
+    <div>
+      <label style="font-size:12px;font-weight:600;color:var(--muted);">Unit</label>
+      <select id="edit-unit" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;">
+        <option value="">— Not set —</option>
+        <option value="Unit I"   ${rec.unit==='Unit I'?'selected':''}>Unit I</option>
+        <option value="Unit II"  ${rec.unit==='Unit II'?'selected':''}>Unit II</option>
+        <option value="Unit III" ${rec.unit==='Unit III'?'selected':''}>Unit III</option>
+        <option value="Unit IV"  ${rec.unit==='Unit IV'?'selected':''}>Unit IV</option>
+      </select>
+    </div>
+  </div>
+  <div style="border:1px solid #c7d2fe;border-radius:8px;padding:12px;margin-bottom:14px;background:#f0f4ff;">
+    <div style="font-weight:700;font-size:13px;color:var(--primary-dark);margin-bottom:9px;">👥 Staff Details</div>
+    <label style="font-size:12px;font-weight:600;color:var(--muted);">Instructor Name</label>
+    <input type="text" id="edit-staff-instructor" value="${s.instructor||''}" placeholder="Instructor Name" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;margin-bottom:7px;">
+    <label style="font-size:12px;font-weight:600;color:var(--muted);">Instructor Designation / Trade</label>
+    <input type="text" id="edit-staff-instructor-desig" value="${s.instructorDesig||''}" placeholder="e.g. Instructor – Electrician" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;margin-bottom:7px;">
+    <label style="font-size:12px;font-weight:600;color:var(--muted);">Workshop Attendant</label>
+    <input type="text" id="edit-staff-attendant" value="${s.attendant||''}" placeholder="Attendant Name" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;margin-bottom:7px;">
+    <label style="font-size:12px;font-weight:600;color:var(--muted);">Other Staff Present</label>
+    <textarea id="edit-staff-others" placeholder="Names and designations…" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;margin-bottom:7px;resize:vertical;">${s.others||''}</textarea>
+    <label style="font-size:12px;font-weight:600;color:var(--muted);">General Remarks</label>
+    <textarea id="edit-staff-remarks" placeholder="General observations…" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;resize:vertical;">${s.remarks||''}</textarea>
+  </div>`;
+
+  const sections = [
+    { key: 'nsqf', title: 'Section A — NSQF Documents', items: rec.nsqf },
+    { key: 'reg',  title: 'Section B — Registers & Safety', items: rec.reg },
+    { key: 'custom', title: 'Section C — Additional Items', items: rec.custom }
+  ];
+  sections.forEach(sec => {
+    if (!sec.items?.length) return;
+    html += `<h3 style="font-size:13px;color:var(--primary-dark);margin:12px 0 6px;">${sec.title}</h3>`;
+    sec.items.forEach((item, i) => {
+      html += `<div style="border:1px solid var(--border);border-radius:7px;padding:9px 10px;margin-bottom:7px;background:#fafafa;">
+        <div style="font-size:12px;font-weight:700;margin-bottom:6px;">${i+1}. ${item.name}</div>
+        <div style="display:flex;gap:5px;margin-bottom:5px;">
+          <button onclick="editToggle(this,'${sec.key}',${i},'yes')" style="padding:4px 10px;border:1.5px solid #d1d5db;border-radius:14px;cursor:pointer;font-size:11px;font-weight:700;background:${item.status==='yes'?'#d1fae5':'#f9fafb'};color:${item.status==='yes'?'#065f46':'#6b7280'};">✅ Yes</button>
+          <button onclick="editToggle(this,'${sec.key}',${i},'no')"  style="padding:4px 10px;border:1.5px solid #d1d5db;border-radius:14px;cursor:pointer;font-size:11px;font-weight:700;background:${item.status==='no'?'#fee2e2':'#f9fafb'};color:${item.status==='no'?'#991b1b':'#6b7280'};">❌ No</button>
+          <button onclick="editToggle(this,'${sec.key}',${i},'nu')"  style="padding:4px 10px;border:1.5px solid #d1d5db;border-radius:14px;cursor:pointer;font-size:11px;font-weight:700;background:${item.status==='nu'?'#fef3c7':'#f9fafb'};color:${item.status==='nu'?'#92400e':'#6b7280'};">⚠️ N/U</button>
+        </div>
+        <input type="text" id="edit-remark-${sec.key}-${i}" value="${item.remark||''}" placeholder="Remark…" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;">
+      </div>`;
+    });
+  });
+
+  document.getElementById('edit-modal-body').innerHTML = html;
+  document.getElementById('edit-modal').classList.add('open');
+
+  // Store current state for editing
+  window._editData = JSON.parse(JSON.stringify(rec));
+}
+
+function editToggle(btn, secKey, idx, val) {
+  // Update visual
+  const parent = btn.parentElement;
+  parent.querySelectorAll('button').forEach(b => {
+    b.style.background = '#f9fafb';
+    b.style.color = '#6b7280';
+  });
+  const colors = { yes: ['#d1fae5','#065f46'], no: ['#fee2e2','#991b1b'], nu: ['#fef3c7','#92400e'] };
+  btn.style.background = colors[val][0];
+  btn.style.color = colors[val][1];
+  // Update data
+  if (window._editData) {
+    if (window._editData[secKey] && window._editData[secKey][idx]) {
+      window._editData[secKey][idx].status = val;
+    }
+  }
+}
+
+function saveEditModal() {
+  if (!editingId || !window._editData) return;
+
+  // Collect shift / unit
+  window._editData.shift = document.getElementById('edit-shift')?.value || '';
+  window._editData.unit  = document.getElementById('edit-unit')?.value  || '';
+
+  // Collect edited staff details
+  window._editData.staff = {
+    instructor:      document.getElementById('edit-staff-instructor')?.value.trim() || '',
+    instructorDesig: document.getElementById('edit-staff-instructor-desig')?.value.trim() || '',
+    attendant:       document.getElementById('edit-staff-attendant')?.value.trim() || '',
+    others:          document.getElementById('edit-staff-others')?.value.trim() || '',
+    remarks:         document.getElementById('edit-staff-remarks')?.value.trim() || ''
+  };
+
+  // Collect remarks
+  ['nsqf','reg','custom'].forEach(key => {
+    (window._editData[key] || []).forEach((item, i) => {
+      const inp = document.getElementById(`edit-remark-${key}-${i}`);
+      if (inp) item.remark = inp.value;
+    });
+  });
+
+  const history = JSON.parse(localStorage.getItem('inspectionHistory') || '[]');
+  const idx = history.findIndex(r => r.id === editingId);
+  if (idx !== -1) {
+    history[idx] = { ...history[idx], ...window._editData };
+    localStorage.setItem('inspectionHistory', JSON.stringify(history));
+  }
+
+  closeModal();
+  renderHistory();
+  alert('✅ Inspection updated!');
+}
+
+function printRecord(id) {
+  const history = JSON.parse(localStorage.getItem('inspectionHistory') || '[]');
+  const rec = history.find(r => r.id === id);
+  if (rec) openPrintView(rec);
+}
+
+function deleteRecord(id) {
+  if (!confirm('Delete this inspection record?')) return;
+  let history = JSON.parse(localStorage.getItem('inspectionHistory') || '[]');
+  history = history.filter(r => r.id !== id);
+  localStorage.setItem('inspectionHistory', JSON.stringify(history));
+  closeModal();
+  renderHistory();
+}
+
+function clearAllHistory() {
+  if (!confirm('Delete ALL inspection history? This cannot be undone.')) return;
+  localStorage.removeItem('inspectionHistory');
+  renderHistory();
+}
+
+// ================================================================
+// MODALS
+// ================================================================
+function closeModal() {
+  document.getElementById('edit-modal').classList.remove('open');
+  document.getElementById('view-modal').classList.remove('open');
+  editingId = null;
+  window._editData = null;
+}
+
+// Close modal on overlay click
+document.getElementById('edit-modal').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
+document.getElementById('view-modal').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
+</script>
+</body>
+</html>
