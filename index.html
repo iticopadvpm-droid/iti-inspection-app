@@ -4,6 +4,46 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ITI Inspection App — Kerala DET</title>
+
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
+    from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+  import { getFirestore, collection, doc, setDoc, getDocs, deleteDoc, query, orderBy }
+    from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDWRBHn7SENJuD4UyrnWaOTX5AKKBs8zkk",
+    authDomain: "iti-inspection-app.firebaseapp.com",
+    projectId: "iti-inspection-app",
+    storageBucket: "iti-inspection-app.firebasestorage.app",
+    messagingSenderId: "616563823326",
+    appId: "1:616563823326:web:2ca95fbd6f811d0f4de84f"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const provider = new GoogleAuthProvider();
+
+  // Expose to global scope for non-module code
+  window._fb = { auth, db, provider, signInWithPopup, signOut, onAuthStateChanged,
+    collection, doc, setDoc, getDocs, deleteDoc, query, orderBy };
+
+  // Auth state listener
+  onAuthStateChanged(auth, user => {
+    window._fbUser = user || null;
+    updateAuthUI(user);
+    if (user) {
+      loadProfileFromCloud();
+      loadHistoryFromCloud();
+    } else {
+      renderHistory();
+    }
+  });
+</script>
+
 <style>
 :root {
   --primary: #1a56db;
@@ -244,6 +284,15 @@ textarea { resize: vertical; min-height: 60px; }
     <button class="nav-btn active" onclick="showPage('home')">🏠 New</button>
     <button class="nav-btn" onclick="showPage('history')">📋 History</button>
     <button class="nav-btn" onclick="showPage('profile')">👤 Profile</button>
+  </div>
+</div>
+
+<!-- AUTH BANNER -->
+<div id="auth-banner" style="background:#1e429f;color:#fff;padding:8px 16px;display:flex;align-items:center;justify-content:space-between;font-size:13px;gap:8px;flex-wrap:wrap;">
+  <span id="auth-status">⏳ Connecting to cloud...</span>
+  <div style="display:flex;gap:8px;">
+    <button id="btn-signin" onclick="fbSignIn()" class="btn btn-sm" style="background:#fff;color:#1e429f;display:none;">🔑 Sign in with Google</button>
+    <button id="btn-signout" onclick="fbSignOut()" class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:#fff;display:none;">Sign Out</button>
   </div>
 </div>
 
@@ -1012,16 +1061,33 @@ function collectInspectionData() {
 // ================================================================
 // SAVE INSPECTION
 // ================================================================
-function saveInspection() {
+async function saveInspection() {
   const data = collectInspectionData();
   if (!data) { alert('Please select District, ITI and Trade first.'); return; }
 
-  const history = JSON.parse(localStorage.getItem('inspectionHistory') || '[]');
   const id = Date.now().toString();
-  history.unshift({ id, ...data, savedAt: new Date().toLocaleString('en-IN') });
-  localStorage.setItem('inspectionHistory', JSON.stringify(history));
-  alert('✅ Inspection saved successfully!');
-  renderHistory();
+  const record = { id, ...data, savedAt: new Date().toLocaleString('en-IN') };
+
+  if (window._fbUser) {
+    const ok = await saveInspectionToCloud(record);
+    if (ok) {
+      _cloudHistory.unshift(record);
+      alert('✅ Inspection saved to cloud!');
+      renderHistory();
+    } else {
+      alert('⚠️ Cloud save failed. Saved locally instead.');
+      const history = JSON.parse(localStorage.getItem('inspectionHistory') || '[]');
+      history.unshift(record);
+      localStorage.setItem('inspectionHistory', JSON.stringify(history));
+      renderHistory();
+    }
+  } else {
+    const history = JSON.parse(localStorage.getItem('inspectionHistory') || '[]');
+    history.unshift(record);
+    localStorage.setItem('inspectionHistory', JSON.stringify(history));
+    alert('✅ Inspection saved (device only — sign in to sync to cloud).');
+    renderHistory();
+  }
 }
 
 // ================================================================
@@ -1160,6 +1226,7 @@ function saveProfile() {
     email:  document.getElementById('prof-email').value.trim()
   };
   localStorage.setItem('inspectorProfile', JSON.stringify(prof));
+  saveProfileToCloud(prof);
   const msg = document.getElementById('prof-msg');
   msg.textContent = '✅ Profile saved successfully!';
   msg.style.display = 'block';
@@ -1214,7 +1281,7 @@ function removeDefaultItem(idx) {
 // HISTORY
 // ================================================================
 function renderHistory() {
-  const history = JSON.parse(localStorage.getItem('inspectionHistory') || '[]');
+  const history = getHistory();
   const filterDist  = document.getElementById('hist-filter-district')?.value || '';
   const search = (document.getElementById('hist-search')?.value || '').toLowerCase();
 
@@ -1263,7 +1330,7 @@ function renderHistory() {
 }
 
 function viewRecord(id) {
-  const history = JSON.parse(localStorage.getItem('inspectionHistory') || '[]');
+  const history = getHistory();
   const rec = history.find(r => r.id === id);
   if (!rec) return;
 
@@ -1325,7 +1392,7 @@ function buildViewHTML(rec) {
 }
 
 function editRecord(id) {
-  const history = JSON.parse(localStorage.getItem('inspectionHistory') || '[]');
+  const history = getHistory();
   const rec = history.find(r => r.id === id);
   if (!rec) return;
   editingId = id;
@@ -1455,35 +1522,51 @@ function saveEditModal() {
     });
   });
 
-  const history = JSON.parse(localStorage.getItem('inspectionHistory') || '[]');
-  const idx = history.findIndex(r => r.id === editingId);
-  if (idx !== -1) {
-    history[idx] = { ...history[idx], ...window._editData };
-    localStorage.setItem('inspectionHistory', JSON.stringify(history));
-  }
+  const updatedRecord = { ...(getHistory().find(r => r.id === editingId) || {}), ...window._editData };
 
-  closeModal();
-  renderHistory();
-  alert('✅ Inspection updated!');
+  if (window._fbUser) {
+    saveInspectionToCloud(updatedRecord).then(() => {
+      const idx = _cloudHistory.findIndex(r => r.id === editingId);
+      if (idx !== -1) _cloudHistory[idx] = updatedRecord;
+      closeModal();
+      renderHistory();
+      alert('✅ Inspection updated in cloud!');
+    });
+  } else {
+    const history = JSON.parse(localStorage.getItem('inspectionHistory') || '[]');
+    const idx = history.findIndex(r => r.id === editingId);
+    if (idx !== -1) {
+      history[idx] = updatedRecord;
+      localStorage.setItem('inspectionHistory', JSON.stringify(history));
+    }
+    closeModal();
+    renderHistory();
+    alert('✅ Inspection updated!');
+  }
 }
 
 function printRecord(id) {
-  const history = JSON.parse(localStorage.getItem('inspectionHistory') || '[]');
+  const history = getHistory();
   const rec = history.find(r => r.id === id);
   if (rec) openPrintView(rec);
 }
 
-function deleteRecord(id) {
+async function deleteRecord(id) {
   if (!confirm('Delete this inspection record?')) return;
-  let history = JSON.parse(localStorage.getItem('inspectionHistory') || '[]');
-  history = history.filter(r => r.id !== id);
-  localStorage.setItem('inspectionHistory', JSON.stringify(history));
+  if (window._fbUser) {
+    await deleteInspectionFromCloud(id);
+    _cloudHistory = _cloudHistory.filter(r => r.id !== id);
+  } else {
+    let history = JSON.parse(localStorage.getItem('inspectionHistory') || '[]');
+    history = history.filter(r => r.id !== id);
+    localStorage.setItem('inspectionHistory', JSON.stringify(history));
+  }
   closeModal();
   renderHistory();
 }
 
 function exportHistory() {
-  const history = JSON.parse(localStorage.getItem('inspectionHistory') || '[]');
+  const history = getHistory();
   if (!history.length) { alert('No inspection history to export.'); return; }
   const profile = JSON.parse(localStorage.getItem('inspectorProfile') || '{}');
   const data = { exportedAt: new Date().toISOString(), profile, history };
@@ -1528,16 +1611,124 @@ function importHistory(event) {
   event.target.value = ''; // reset so same file can be re-imported
 }
 
-function clearAllHistory() {
+async function clearAllHistory() {
   const typed = prompt('⚠️ This will permanently delete ALL inspection history.\n\nType  DELETE  (in capitals) to confirm:');
-  if (typed === null) return; // cancelled
+  if (typed === null) return;
   if (typed.trim() !== 'DELETE') {
     alert('❌ Not deleted. You must type DELETE exactly to confirm.');
     return;
   }
-  localStorage.removeItem('inspectionHistory');
+  if (window._fbUser) {
+    // Delete all from Firestore
+    const ids = _cloudHistory.map(r => r.id);
+    await Promise.all(ids.map(id => deleteInspectionFromCloud(id)));
+    _cloudHistory = [];
+  } else {
+    localStorage.removeItem('inspectionHistory');
+  }
   renderHistory();
   alert('✅ All inspection history cleared.');
+}
+
+// ================================================================
+// FIREBASE AUTH & CLOUD HELPERS
+// ================================================================
+
+// In-memory history cache (used when logged in via Firebase)
+let _cloudHistory = [];
+
+function updateAuthUI(user) {
+  const statusEl = document.getElementById('auth-status');
+  const signinBtn = document.getElementById('btn-signin');
+  const signoutBtn = document.getElementById('btn-signout');
+  if (!statusEl) return;
+  if (user) {
+    statusEl.textContent = `☁️ Signed in as ${user.displayName || user.email}`;
+    signinBtn.style.display = 'none';
+    signoutBtn.style.display = '';
+  } else {
+    statusEl.textContent = '🔒 Not signed in — data saved on this device only';
+    signinBtn.style.display = '';
+    signoutBtn.style.display = 'none';
+  }
+}
+
+function fbSignIn() {
+  if (!window._fb) return;
+  window._fb.signInWithPopup(window._fb.auth, window._fb.provider)
+    .catch(err => alert('Sign-in failed: ' + err.message));
+}
+
+function fbSignOut() {
+  if (!window._fb) return;
+  window._fb.signOut(window._fb.auth);
+  _cloudHistory = [];
+  renderHistory();
+}
+
+// ---- PROFILE ----
+async function loadProfileFromCloud() {
+  if (!window._fbUser || !window._fb) { loadProfile(); return; }
+  try {
+    const { db, doc } = window._fb;
+    const { getDoc } = await import("https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js");
+    const snap = await getDoc(doc(db, 'users', window._fbUser.uid, 'meta', 'profile'));
+    if (snap.exists()) {
+      const prof = snap.data();
+      document.getElementById('prof-name').value  = prof.name   || '';
+      document.getElementById('prof-desig').value = prof.desig  || '';
+      document.getElementById('prof-office').value= prof.office || '';
+      document.getElementById('prof-phone').value = prof.phone  || '';
+      document.getElementById('prof-email').value = prof.email  || '';
+      localStorage.setItem('inspectorProfile', JSON.stringify(prof));
+    } else { loadProfile(); }
+  } catch(e) { loadProfile(); }
+}
+
+async function saveProfileToCloud(prof) {
+  if (!window._fbUser || !window._fb) return;
+  try {
+    const { db, doc, setDoc } = window._fb;
+    await setDoc(doc(db, 'users', window._fbUser.uid, 'meta', 'profile'), prof);
+  } catch(e) { console.warn('Cloud profile save failed', e); }
+}
+
+// ---- HISTORY ----
+async function loadHistoryFromCloud() {
+  if (!window._fbUser || !window._fb) { renderHistory(); return; }
+  try {
+    const { db, collection, getDocs, query, orderBy } = window._fb;
+    const q = query(collection(db, 'users', window._fbUser.uid, 'inspections'), orderBy('savedAt', 'desc'));
+    const snap = await getDocs(q);
+    _cloudHistory = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderHistory();
+  } catch(e) {
+    console.warn('Cloud history load failed', e);
+    renderHistory();
+  }
+}
+
+async function saveInspectionToCloud(record) {
+  if (!window._fbUser || !window._fb) return false;
+  try {
+    const { db, doc, setDoc } = window._fb;
+    await setDoc(doc(db, 'users', window._fbUser.uid, 'inspections', record.id), record);
+    return true;
+  } catch(e) { console.warn('Cloud save failed', e); return false; }
+}
+
+async function deleteInspectionFromCloud(id) {
+  if (!window._fbUser || !window._fb) return;
+  try {
+    const { db, doc, deleteDoc } = window._fb;
+    await deleteDoc(doc(db, 'users', window._fbUser.uid, 'inspections', id));
+  } catch(e) { console.warn('Cloud delete failed', e); }
+}
+
+// ---- GETHISTORY helper (cloud-aware) ----
+function getHistory() {
+  if (window._fbUser) return _cloudHistory;
+  return JSON.parse(localStorage.getItem('inspectionHistory') || '[]');
 }
 
 // ================================================================
