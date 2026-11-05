@@ -372,6 +372,8 @@ textarea { resize: vertical; min-height: 60px; }
         <option value="">All Districts</option>
       </select>
       <input type="text" id="hist-search" placeholder="" style="flex:1; min-width:140px; margin-bottom:0;" oninput="renderHistory()">
+      <button class="btn btn-outline btn-sm" onclick="exportHistory()">⬇️ Export JSON</button>
+      <label class="btn btn-outline btn-sm" style="cursor:pointer;margin-bottom:0;">⬆️ Import JSON<input type="file" accept=".json" style="display:none" onchange="importHistory(event)"></label>
       <button class="btn btn-danger btn-sm" onclick="clearAllHistory()">🗑️ Clear All</button>
     </div>
 
@@ -1478,6 +1480,52 @@ function deleteRecord(id) {
   localStorage.setItem('inspectionHistory', JSON.stringify(history));
   closeModal();
   renderHistory();
+}
+
+function exportHistory() {
+  const history = JSON.parse(localStorage.getItem('inspectionHistory') || '[]');
+  if (!history.length) { alert('No inspection history to export.'); return; }
+  const profile = JSON.parse(localStorage.getItem('inspectorProfile') || '{}');
+  const data = { exportedAt: new Date().toISOString(), profile, history };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const date = new Date().toISOString().slice(0,10);
+  a.download = `iti-inspection-backup-${date}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importHistory(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      // Support both formats: raw array or wrapped export object
+      const incoming = Array.isArray(data) ? data : (data.history || []);
+      if (!incoming.length) { alert('No records found in this file.'); return; }
+      const existing = JSON.parse(localStorage.getItem('inspectionHistory') || '[]');
+      // Merge: skip duplicates by id
+      const existingIds = new Set(existing.map(r => r.id));
+      const newRecords = incoming.filter(r => !existingIds.has(r.id));
+      const merged = [...existing, ...newRecords];
+      localStorage.setItem('inspectionHistory', JSON.stringify(merged));
+      // Optionally restore profile if not set
+      if (data.profile && !localStorage.getItem('inspectorProfile')) {
+        localStorage.setItem('inspectorProfile', JSON.stringify(data.profile));
+        loadProfile();
+      }
+      renderHistory();
+      alert(`✅ Import complete.\n${newRecords.length} new record(s) added.\n${incoming.length - newRecords.length} duplicate(s) skipped.`);
+    } catch(err) {
+      alert('❌ Invalid JSON file. Please use a file exported from this app.');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = ''; // reset so same file can be re-imported
 }
 
 function clearAllHistory() {
