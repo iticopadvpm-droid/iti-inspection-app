@@ -302,24 +302,14 @@ textarea { resize: vertical; min-height: 60px; }
   <div id="staff-card" style="display:none">
     <div class="card">
       <h2>👥 Staff Details During Visit</h2>
-      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Enter the details of staff present at the time of inspection.</p>
-      <label>Instructor Name</label>
-      <input type="text" id="staff-instructor" placeholder="">
-      <label>Instructor Designation</label>
-      <select id="staff-instructor-desig-sel" onchange="handleDesigSelect()" style="margin-bottom:6px;">
-        <option value="">-- Select Designation --</option>
-        <option value="Senior Instructor">Senior Instructor</option>
-        <option value="Junior Instructor">Junior Instructor</option>
-        <option value="Workshop Attendant">Workshop Attendant</option>
-        <option value="__other__">Other (type manually)</option>
-      </select>
-      <input type="text" id="staff-instructor-desig" placeholder="" style="display:none;">
-      <label>Workshop Attendant Name</label>
-      <input type="text" id="staff-attendant" placeholder="">
-      <label>Other Staff Present <span style="font-weight:400;color:var(--muted);">(names, designations)</span></label>
-      <textarea id="staff-others" placeholder="" rows="2"></textarea>
-      <label>Remarks / General Observations</label>
-      <textarea id="staff-remarks" placeholder="" rows="2"></textarea>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:14px;">Enter the details of staff present at the time of inspection.</p>
+
+      <div id="staff-list"></div>
+
+      <button class="btn btn-outline btn-sm no-print" onclick="addStaffRow()" style="margin-bottom:12px;">+ Add Staff</button>
+
+      <label>Remarks</label>
+      <textarea id="staff-remarks" rows="2"></textarea>
     </div>
   </div>
 
@@ -646,58 +636,132 @@ function showPage(name) {
 // ================================================================
 // DESIGNATION SELECT HELPER
 // ================================================================
-function handleEditDesigSelect() {
-  const sel = document.getElementById('edit-staff-instructor-desig-sel');
-  const inp = document.getElementById('edit-staff-instructor-desig');
-  if (!sel || !inp) return;
-  if (sel.value === '__other__') { inp.style.display = 'block'; inp.focus(); }
-  else { inp.style.display = 'none'; inp.value = ''; }
+// ================================================================
+// MULTI-STAFF ROWS
+// ================================================================
+let staffRows = [];
+
+function renderStaffRows() {
+  const container = document.getElementById('staff-list');
+  if (!container) return;
+  container.innerHTML = '';
+  staffRows.forEach((row, i) => {
+    const div = document.createElement('div');
+    div.style.cssText = 'border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:10px;background:#fafafa;position:relative;';
+    div.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <span style="font-size:12px;font-weight:700;color:var(--primary-dark);">Staff ${i+1}</span>
+        ${staffRows.length > 1 ? `<button onclick="removeStaffRow(${i})" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:15px;" class="no-print">🗑</button>` : ''}
+      </div>
+      <label style="font-size:12px;font-weight:600;color:var(--muted);">Instructor Name</label>
+      <input type="text" value="${row.name||''}" oninput="staffRows[${i}].name=this.value" style="width:100%;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;margin-bottom:8px;">
+      <label style="font-size:12px;font-weight:600;color:var(--muted);">Instructor Designation / Trade</label>
+      <select onchange="handleStaffDesig(this,${i})" style="width:100%;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;margin-bottom:4px;">
+        <option value="">-- Select --</option>
+        <option value="Senior Instructor"  ${row.desig==='Senior Instructor'?'selected':''}>Senior Instructor</option>
+        <option value="Junior Instructor"  ${row.desig==='Junior Instructor'?'selected':''}>Junior Instructor</option>
+        <option value="Workshop Attendant" ${row.desig==='Workshop Attendant'?'selected':''}>Workshop Attendant</option>
+        <option value="__other__" ${row.desig&&!['Senior Instructor','Junior Instructor','Workshop Attendant'].includes(row.desig)?'selected':''}>Other (type manually)</option>
+      </select>
+      <input type="text" id="staff-desig-other-${i}" value="${row.desig&&!['Senior Instructor','Junior Instructor','Workshop Attendant'].includes(row.desig)?row.desig:''}" oninput="staffRows[${i}].desig=this.value" style="width:100%;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;margin-bottom:0;display:${row.desig&&!['Senior Instructor','Junior Instructor','Workshop Attendant'].includes(row.desig)?'block':'none'};">
+    `;
+    container.appendChild(div);
+  });
 }
 
+function handleStaffDesig(sel, i) {
+  const inp = document.getElementById(`staff-desig-other-${i}`);
+  const presets = ['Senior Instructor','Junior Instructor','Workshop Attendant'];
+  if (sel.value === '__other__') {
+    inp.style.display = 'block'; inp.focus();
+    staffRows[i].desig = '';
+  } else {
+    inp.style.display = 'none'; inp.value = '';
+    staffRows[i].desig = sel.value;
+  }
+}
+
+function addStaffRow() {
+  staffRows.push({ name: '', desig: '' });
+  renderStaffRows();
+}
+
+function removeStaffRow(i) {
+  staffRows.splice(i, 1);
+  renderStaffRows();
+}
+
+function initStaffRows() {
+  staffRows = [{ name: '', desig: '' }];
+  renderStaffRows();
+  document.getElementById('staff-remarks').value = '';
+}
+
+function getStaffData() {
+  // Sync any "other" text inputs before collecting
+  staffRows.forEach((row, i) => {
+    const inp = document.getElementById(`staff-desig-other-${i}`);
+    if (inp && inp.style.display !== 'none') row.desig = inp.value.trim();
+    const nameInp = document.querySelector(`#staff-list > div:nth-child(${i+1}) input[type=text]`);
+    if (nameInp) row.name = nameInp.value.trim();
+  });
+  return {
+    list:    staffRows.filter(r => r.name || r.desig),
+    remarks: document.getElementById('staff-remarks')?.value.trim() || ''
+  };
+}
+
+function syncEditDesig(i) {
+  const sel = document.getElementById(`edit-sdesig-${i}`);
+  const wrap = document.getElementById(`edit-sdesig-other-wrap-${i}`);
+  if (!sel) return;
+  if (wrap) wrap.style.display = sel.value === '__other__' ? 'block' : 'none';
+}
+
+function addEditStaff() {
+  const container = document.getElementById('edit-staff-list');
+  if (!container) return;
+  let count = 0;
+  while (document.getElementById(`edit-sname-${count}`)) count++;
+  const div = document.createElement('div');
+  div.id = `edit-staff-row-${count}`;
+  div.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:6px;align-items:center;margin-bottom:7px;">
+      <input type="text" id="edit-sname-${count}" value="" placeholder="" style="padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;">
+      <select id="edit-sdesig-${count}" onchange="syncEditDesig(${count})" style="padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;">
+        <option value="">-- Designation --</option>
+        <option value="Senior Instructor">Senior Instructor</option>
+        <option value="Junior Instructor">Junior Instructor</option>
+        <option value="Workshop Attendant">Workshop Attendant</option>
+        <option value="__other__">Other…</option>
+      </select>
+      <button onclick="removeEditStaff(${count})" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:15px;">🗑</button>
+    </div>
+    <div id="edit-sdesig-other-wrap-${count}" style="display:none;margin-bottom:7px;">
+      <input type="text" id="edit-sdesig-other-${count}" value="" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;">
+    </div>`;
+  container.appendChild(div);
+}
+
+function removeEditStaff(i) {
+  const row = document.getElementById(`edit-staff-row-${i}`);
+  if (row) { row.remove(); return; }
+  const n = document.getElementById(`edit-sname-${i}`);
+  const d = document.getElementById(`edit-sdesig-${i}`);
+  if (n) n.value = '';
+  if (d) d.value = '';
+}
+
+// legacy stubs (kept so edit modal still works)
+function handleDesigSelect() {}
+function getDesigValue() { return ''; }
+function setDesigValue(val) {}
+function handleEditDesigSelect() {}
 function getEditDesigValue() {
   const sel = document.getElementById('edit-staff-instructor-desig-sel');
   const inp = document.getElementById('edit-staff-instructor-desig');
   if (!sel) return '';
   return sel.value === '__other__' ? (inp?.value.trim() || '') : sel.value;
-}
-
-function handleDesigSelect() {
-  const sel = document.getElementById('staff-instructor-desig-sel');
-  const inp = document.getElementById('staff-instructor-desig');
-  if (sel.value === '__other__') {
-    inp.style.display = 'block';
-    inp.focus();
-  } else {
-    inp.style.display = 'none';
-    inp.value = '';
-  }
-}
-
-function getDesigValue() {
-  const sel = document.getElementById('staff-instructor-desig-sel');
-  const inp = document.getElementById('staff-instructor-desig');
-  if (!sel) return '';
-  return sel.value === '__other__' ? inp.value.trim() : sel.value;
-}
-
-function setDesigValue(val) {
-  const sel = document.getElementById('staff-instructor-desig-sel');
-  const inp = document.getElementById('staff-instructor-desig');
-  if (!sel) return;
-  const presets = ['Senior Instructor','Junior Instructor','Workshop Attendant'];
-  if (presets.includes(val)) {
-    sel.value = val;
-    inp.style.display = 'none';
-    inp.value = '';
-  } else if (val) {
-    sel.value = '__other__';
-    inp.style.display = 'block';
-    inp.value = val;
-  } else {
-    sel.value = '';
-    inp.style.display = 'none';
-    inp.value = '';
-  }
 }
 
 // ================================================================
@@ -777,10 +841,7 @@ function loadChecklist() {
 
   // Show staff card and clear fields
   document.getElementById('staff-card').style.display = 'block';
-  ['staff-instructor','staff-attendant','staff-others','staff-remarks'].forEach(id => {
-    document.getElementById(id).value = '';
-  });
-  setDesigValue('');
+  initStaffRows();
 
   renderNSQF();
   renderRegItems();
@@ -925,13 +986,7 @@ function collectInspectionData() {
   const shift = document.getElementById('sel-shift').value;
   const unit  = document.getElementById('sel-unit').value;
 
-  const staff = {
-    instructor:      document.getElementById('staff-instructor')?.value.trim() || '',
-    instructorDesig: getDesigValue(),
-    attendant:       document.getElementById('staff-attendant')?.value.trim() || '',
-    others:          document.getElementById('staff-others')?.value.trim() || '',
-    remarks:         document.getElementById('staff-remarks')?.value.trim() || ''
-  };
+  const staff = getStaffData();
 
   const nsqf = NSQF_DOCS.map((name, i) => ({
     name,
@@ -1052,16 +1107,14 @@ function buildReportHTML(data) {
     <div class="info-row"><strong>Designation:</strong> ${prof.desig || '—'}</div>
     <div class="info-row"><strong>Office:</strong> ${prof.office || '—'}</div>
   </div>
-  ${(data.staff && (data.staff.instructor || data.staff.attendant || data.staff.others)) ? `
+  ${(data.staff && data.staff.list && data.staff.list.length) ? `
   <div style="border:1px solid #ccc;border-radius:6px;padding:10px 12px;margin-bottom:14px;background:#f0f4ff;">
     <div style="font-weight:700;font-size:13px;color:#1e3a8a;margin-bottom:7px;">👥 Staff Present During Inspection</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 20px;font-size:12px;">
-      ${data.staff.instructor ? `<div><strong>Instructor:</strong> ${data.staff.instructor}</div>` : ''}
-      ${data.staff.instructorDesig ? `<div><strong>Designation/Trade:</strong> ${data.staff.instructorDesig}</div>` : ''}
-      ${data.staff.attendant ? `<div><strong>Workshop Attendant:</strong> ${data.staff.attendant}</div>` : ''}
-      ${data.staff.others ? `<div style="grid-column:1/-1;"><strong>Other Staff:</strong> ${data.staff.others}</div>` : ''}
-      ${data.staff.remarks ? `<div style="grid-column:1/-1;"><strong>General Remarks:</strong> ${data.staff.remarks}</div>` : ''}
-    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <tr><th style="text-align:left;padding:4px 8px;background:#dbeafe;color:#1e40af;">#</th><th style="text-align:left;padding:4px 8px;background:#dbeafe;color:#1e40af;">Name</th><th style="text-align:left;padding:4px 8px;background:#dbeafe;color:#1e40af;">Designation / Trade</th></tr>
+      ${data.staff.list.map((r,i)=>`<tr><td style="padding:4px 8px;border-bottom:1px solid #e0e7ff;">${i+1}</td><td style="padding:4px 8px;border-bottom:1px solid #e0e7ff;">${r.name||'—'}</td><td style="padding:4px 8px;border-bottom:1px solid #e0e7ff;">${r.desig||'—'}</td></tr>`).join('')}
+    </table>
+    ${data.staff.remarks ? `<div style="margin-top:7px;font-size:12px;"><strong>Remarks:</strong> ${data.staff.remarks}</div>` : ''}
   </div>` : ''}
   <div class="summary">
     <span class="pill pill-y">✅ Available: ${yes}</span>
@@ -1237,16 +1290,14 @@ function buildViewHTML(rec) {
   </div>`;
 
   // Staff block
-  if (rec.staff && (rec.staff.instructor || rec.staff.attendant || rec.staff.others || rec.staff.remarks)) {
-    html += `<div style="border:1px solid #c7d2fe;border-radius:7px;padding:10px 12px;margin-bottom:12px;background:#e0e7ff20;">
+  if (rec.staff && rec.staff.list && rec.staff.list.length) {
+    html += `<div style="border:1px solid #c7d2fe;border-radius:7px;padding:10px 12px;margin-bottom:12px;background:#f0f4ff;">
       <div style="font-weight:700;font-size:13px;color:var(--primary-dark);margin-bottom:7px;">👥 Staff Present During Inspection</div>
-      <div style="font-size:12px;display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;">
-        ${rec.staff.instructor ? `<div><strong>Instructor:</strong> ${rec.staff.instructor}</div>` : ''}
-        ${rec.staff.instructorDesig ? `<div><strong>Designation/Trade:</strong> ${rec.staff.instructorDesig}</div>` : ''}
-        ${rec.staff.attendant ? `<div><strong>Workshop Attendant:</strong> ${rec.staff.attendant}</div>` : ''}
-        ${rec.staff.others ? `<div style="grid-column:1/-1;"><strong>Other Staff:</strong> ${rec.staff.others}</div>` : ''}
-        ${rec.staff.remarks ? `<div style="grid-column:1/-1;"><strong>General Remarks:</strong> ${rec.staff.remarks}</div>` : ''}
-      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <tr><th style="text-align:left;padding:4px 6px;background:#dbeafe;color:#1e40af;">#</th><th style="text-align:left;padding:4px 6px;background:#dbeafe;color:#1e40af;">Name</th><th style="text-align:left;padding:4px 6px;background:#dbeafe;color:#1e40af;">Designation / Trade</th></tr>
+        ${rec.staff.list.map((r,i)=>`<tr><td style="padding:4px 6px;border-bottom:1px solid #e0e7ff;">${i+1}</td><td style="padding:4px 6px;border-bottom:1px solid #e0e7ff;">${r.name||'—'}</td><td style="padding:4px 6px;border-bottom:1px solid #e0e7ff;">${r.desig||'—'}</td></tr>`).join('')}
+      </table>
+      ${rec.staff.remarks ? `<div style="margin-top:6px;font-size:12px;"><strong>Remarks:</strong> ${rec.staff.remarks}</div>` : ''}
     </div>`;
   }
 
@@ -1301,24 +1352,26 @@ function editRecord(id) {
     </div>
   </div>
   <div style="border:1px solid #c7d2fe;border-radius:8px;padding:12px;margin-bottom:14px;background:#f0f4ff;">
-    <div style="font-weight:700;font-size:13px;color:var(--primary-dark);margin-bottom:9px;">👥 Staff Details</div>
-    <label style="font-size:12px;font-weight:600;color:var(--muted);">Instructor Name</label>
-    <input type="text" id="edit-staff-instructor" value="${s.instructor||''}" placeholder="" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;margin-bottom:7px;">
-    <label style="font-size:12px;font-weight:600;color:var(--muted);">Instructor Designation</label>
-    <select id="edit-staff-instructor-desig-sel" onchange="handleEditDesigSelect()" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;margin-bottom:4px;">
-      <option value="">-- Select Designation --</option>
-      <option value="Senior Instructor"   ${['Senior Instructor'].includes(s.instructorDesig)?'selected':''}>Senior Instructor</option>
-      <option value="Junior Instructor"   ${['Junior Instructor'].includes(s.instructorDesig)?'selected':''}>Junior Instructor</option>
-      <option value="Workshop Attendant"  ${['Workshop Attendant'].includes(s.instructorDesig)?'selected':''}>Workshop Attendant</option>
-      <option value="__other__" ${s.instructorDesig && !['Senior Instructor','Junior Instructor','Workshop Attendant'].includes(s.instructorDesig)?'selected':''}>Other (type manually)</option>
-    </select>
-    <input type="text" id="edit-staff-instructor-desig" value="${s.instructorDesig && !['Senior Instructor','Junior Instructor','Workshop Attendant'].includes(s.instructorDesig) ? s.instructorDesig : ''}" placeholder="" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;margin-bottom:7px;display:${s.instructorDesig && !['Senior Instructor','Junior Instructor','Workshop Attendant'].includes(s.instructorDesig)?'block':'none'};">
-    <label style="font-size:12px;font-weight:600;color:var(--muted);">Workshop Attendant</label>
-    <input type="text" id="edit-staff-attendant" value="${s.attendant||''}" placeholder="" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;margin-bottom:7px;">
-    <label style="font-size:12px;font-weight:600;color:var(--muted);">Other Staff Present</label>
-    <textarea id="edit-staff-others" placeholder="" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;margin-bottom:7px;resize:vertical;">${s.others||''}</textarea>
-    <label style="font-size:12px;font-weight:600;color:var(--muted);">General Remarks</label>
-    <textarea id="edit-staff-remarks" placeholder="" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;resize:vertical;">${s.remarks||''}</textarea>
+    <div style="font-weight:700;font-size:13px;color:var(--primary-dark);margin-bottom:9px;">👥 Staff Present During Inspection</div>
+    <div id="edit-staff-list">
+      ${(s.list&&s.list.length?s.list:[{name:'',desig:''}]).map((r,i)=>`
+      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:6px;align-items:center;margin-bottom:7px;">
+        <input type="text" id="edit-sname-${i}" value="${r.name||''}" placeholder="" style="padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;">
+        <select id="edit-sdesig-${i}" onchange="syncEditDesig(${i})" style="padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;">
+          <option value="">-- Designation --</option>
+          <option value="Senior Instructor"  ${r.desig==='Senior Instructor'?'selected':''}>Senior Instructor</option>
+          <option value="Junior Instructor"  ${r.desig==='Junior Instructor'?'selected':''}>Junior Instructor</option>
+          <option value="Workshop Attendant" ${r.desig==='Workshop Attendant'?'selected':''}>Workshop Attendant</option>
+          <option value="__other__" ${r.desig&&!['Senior Instructor','Junior Instructor','Workshop Attendant',''].includes(r.desig)?'selected':''}>Other…</option>
+        </select>
+        <button onclick="removeEditStaff(${i})" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:15px;">🗑</button>
+      </div>
+      ${r.desig&&!['Senior Instructor','Junior Instructor','Workshop Attendant',''].includes(r.desig)?`<input type="text" id="edit-sdesig-other-${i}" value="${r.desig}" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;margin-bottom:7px;">`:``}
+      `).join('')}
+    </div>
+    <button onclick="addEditStaff()" style="background:#fff;border:1.5px solid var(--primary);color:var(--primary);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;margin-bottom:8px;">+ Add Staff</button>
+    <label style="font-size:12px;font-weight:600;color:var(--muted);">Remarks</label>
+    <textarea id="edit-staff-remarks" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;resize:vertical;">${s.remarks||''}</textarea>
   </div>`;
 
   const sections = [
@@ -1374,13 +1427,22 @@ function saveEditModal() {
   window._editData.shift = document.getElementById('edit-shift')?.value || '';
   window._editData.unit  = document.getElementById('edit-unit')?.value  || '';
 
-  // Collect edited staff details
+  // Collect staff list from edit modal
+  const editStaffList = [];
+  let si = 0;
+  while (document.getElementById(`edit-sname-${si}`) !== null) {
+    const nameEl  = document.getElementById(`edit-sname-${si}`);
+    const desigSel = document.getElementById(`edit-sdesig-${si}`);
+    const desigOther = document.getElementById(`edit-sdesig-other-${si}`);
+    const name  = nameEl?.value.trim() || '';
+    let desig = desigSel?.value || '';
+    if (desig === '__other__') desig = desigOther?.value.trim() || '';
+    if (name || desig) editStaffList.push({ name, desig });
+    si++;
+  }
   window._editData.staff = {
-    instructor:      document.getElementById('edit-staff-instructor')?.value.trim() || '',
-    instructorDesig: getEditDesigValue(),
-    attendant:       document.getElementById('edit-staff-attendant')?.value.trim() || '',
-    others:          document.getElementById('edit-staff-others')?.value.trim() || '',
-    remarks:         document.getElementById('edit-staff-remarks')?.value.trim() || ''
+    list:    editStaffList,
+    remarks: document.getElementById('edit-staff-remarks')?.value.trim() || ''
   };
 
   // Collect remarks
