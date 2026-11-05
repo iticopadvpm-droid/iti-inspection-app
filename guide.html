@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="ml">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ITI Inspection App — User Guide</title>
+<style>
+  :root {
+    --primary: #1a56db;
+    --primary-dark: #1e429f;
+    --success: #057a55;
+    --success-bg: #d1fae5;
+    --warning: #9f580a;
+    --warning-bg: #fef3c7;
+    --danger: #c81e1e;
+    --danger-bg: #fee2e2;
+    --bg: #f3f4f6;
+    --card: #ffffff;
+    --border: #e5e7eb;
+    --text: #111827;
+    --muted: #6b7280;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.7; }
+
+  header {
+    background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+    color: #fff;
+    padding: 28px 20px 24px;
+    text-align: center;
+  }
+  header h1 { font-size: 22px; margin-bottom: 6px; }
+  header p { font-size: 13px; opacity: 0.85; }
+
+  .container { max-width: 720px; margin: 0 auto; padding: 20px 16px 60px; }
+
+  .section {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 18px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.07);
+    border-left: 4px solid var(--primary);
+  }
+  .section.green  { border-left-color: #057a55; }
+  .section.orange { border-left-color: #d97706; }
+  .section.red    { border-left-color: #c81e1e; }
+  .section.purple { border-left-color: #7c3aed; }
+  .section.teal   { border-left-color: #0891b2; }
+
+  .section h2 {
+    font-size: 17px;
+    color: var(--primary-dark);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section.green h2  { color: #065f46; }
+  .section.orange h2 { color: #92400e; }
+  .section.red h2    { color: #991b1b; }
+  .section.purple h2 { color: #5b21b6; }
+  .section.teal h2   { color: #0e7490; }
+
+  .step {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 14px;
+    align-items: flex-start;
+  }
+  .step-num {
+    background: var(--primary);
+    color: #fff;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    font-size: 13px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .section.green  .step-num { background: #057a55; }
+  .section.orange .step-num { background: #d97706; }
+  .section.purple .step-num { background: #7c3aed; }
+  .section.teal   .step-num { background: #0891b2; }
+
+  .step-text { flex: 1; }
+  .step-text strong { display: block; font-size: 14px; margin-bottom: 2px; }
+  .step-text span { font-size: 13px; color: var(--muted); }
+
+  .en { background: #eff6ff; color: #1e429f; padding: 1px 6px; border-radius: 4px; font-size: 12px; font-style: normal; font-weight: 600; }
+
+  .note {
+    background: var(--warning-bg);
+    border: 1px solid #fcd34d;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 13px;
+    margin-top: 12px;
+    color: #78350f;
+  }
+  .note-green {
+    background: var(--success-bg);
+    border: 1px solid #6ee7b7;
+    color: #064e3b;
+  }
+  .note-blue {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1e3a8a;
+  }
+
+  .toggle-row {
+    display: flex;
+    gap: 8px;
+    margin: 10px 0;
+    flex-wrap: wrap;
+  }
+  .badge {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .badge.yes { background: #d1fae5; color: #065f46; }
+  .badge.no  { background: #fee2e2; color: #991b1b; }
+  .badge.nu  { background: #fef3c7; color: #92400e; }
+
+  .cloud-diagram {
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 10px;
+    padding: 16px;
+    margin: 12px 0;
+    text-align: center;
+    font-size: 13px;
+  }
+  .cloud-diagram .row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    margin: 6px 0;
+    flex-wrap: wrap;
+  }
+  .cloud-box {
+    background: #fff;
+    border: 1px solid #93c5fd;
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 12px;
+    color: #1e3a8a;
+    font-weight: 600;
+  }
+  .arrow { color: #60a5fa; font-size: 18px; }
+
+  .user-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 12px 0;
+  }
+  .user-card {
+    background: #f8faff;
+    border: 1px solid #c7d2fe;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 12px;
+    text-align: center;
+  }
+  .user-card .icon { font-size: 22px; margin-bottom: 4px; }
+  .user-card strong { display: block; font-size: 13px; color: #3730a3; }
+  .user-card span { color: var(--muted); }
+
+  .link-box {
+    background: #1e429f;
+    color: #fff;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 13px;
+    text-align: center;
+    margin: 10px 0;
+    word-break: break-all;
+    letter-spacing: 0.3px;
+  }
+
+  h3 { font-size: 14px; color: var(--primary-dark); margin: 14px 0 8px; }
+
+  footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+    padding: 20px;
+    margin-top: 10px;
+  }
+
+  @media (max-width: 480px) {
+    .user-cards { grid-template-columns: 1fr; }
+    header h1 { font-size: 18px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🏭 ITI Inspection App</h1>
+  <p>User Guide — Malayalam | Govt. International ITI Dhanuvachapuram</p>
+</header>
+
+<div class="container">
+
+  <!-- INTRO -->
+  <div class="section">
+    <h2>📱 ഈ App എന്താണ്?</h2>
+    <p>ITI Inspection App എന്നത് <strong>Inspector of Training</strong>-ന് Kerala-ലെ Government ITI-കൾ <em>inspect</em> ചെയ്യുമ്പോൾ ഉപയോഗിക്കാനുള്ള ഒരു digital tool ആണ്. Paper-ൽ എഴുതുന്നതിനു പകരം phone അല്ലെങ്കിൽ laptop-ൽ ഇത് ഉപയോഗിച്ച് inspection record ചെയ്യാം, save ചെയ്യാം, print ചെയ്യാം.</p>
+    <div class="note note-blue" style="margin-top:12px;">
+      🌐 App link: <strong>iticopadvpm-droid.github.io/iti-inspection-app/</strong><br>
+      ഈ link ഏത് phone-ലും browser-ലും തുറക്കാം — install ചെയ്യേണ്ടതില്ല.
+    </div>
+  </div>
+
+  <!-- SIGN IN -->
+  <div class="section green">
+    <h2>🔑 Sign In — ആദ്യം ഇത് ചെയ്യുക</h2>
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-text">
+        <strong>App link തുറക്കുക</strong>
+        <span>മുകളിൽ കൊടുത്ത link browser-ൽ type ചെയ്ത് open ചെയ്യുക.</span>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-text">
+        <strong><span class="en">Sign in with Google</span> button click ചെയ്യുക</strong>
+        <span>App-ന്റെ top-ൽ ഒരു blue bar കാണും. അതിലെ "🔑 Sign in with Google" button press ചെയ്യുക.</span>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-text">
+        <strong>Google Account select ചെയ്യുക</strong>
+        <span>നിങ്ങളുടെ Google/Gmail account select ചെയ്ത് login ആകുക. ഒരു തവണ sign in ചെയ്താൽ data cloud-ൽ save ആകും.</span>
+      </div>
+    </div>
+    <div class="note note-green">
+      ✅ Sign in ചെയ്ത ശേഷം top bar-ൽ <strong>"☁️ Signed in as [your name]"</strong> എന്ന് കാണും.
+    </div>
+  </div>
+
+  <!-- PROFILE -->
+  <div class="section orange">
+    <h2>👤 Profile Setup — ഒരു തവണ മാത്രം</h2>
+    <p style="margin-bottom:12px;">App-ൽ <span class="en">Profile</span> tab-ൽ പോയി Inspector-ന്റെ details fill ചെയ്യുക. ഇത് ഒരു തവണ save ചെയ്താൽ ഓരോ inspection report-ലും automatically വരും.</p>
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-text">
+        <strong>👤 Profile tab click ചെയ്യുക</strong>
+        <span>Top navigation-ൽ Profile button press ചെയ്യുക.</span>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-text">
+        <strong>Details fill ചെയ്യുക</strong>
+        <span>Name, Designation, Office, Phone, Email — ഇവ enter ചെയ്യുക.</span>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-text">
+        <strong><span class="en">Save Profile</span> click ചെയ്യുക</strong>
+        <span>ഒരു തവണ save ചെയ്താൽ മതി. ഇനി ഓരോ report-ലും ഈ details automatically add ആകും.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- NEW INSPECTION -->
+  <div class="section">
+    <h2>🔍 New Inspection — എങ്ങനെ ചെയ്യും</h2>
+
+    <h3>Step 1 — ITI Select ചെയ്യുക</h3>
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-text">
+        <strong>District select ചെയ്യുക</strong>
+        <span>Dropdown-ൽ നിന്ന് District choose ചെയ്യുക.</span>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-text">
+        <strong>ITI Name select ചെയ്യുക</strong>
+        <span>District select ചെയ്ത ശേഷം ആ district-ലെ ITI-കൾ list ആകും. ശരിയായത് choose ചെയ്യുക.</span>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-text">
+        <strong>Trade, Shift, Unit select ചെയ്യുക</strong>
+        <span>ITI select ചെയ്ത ശേഷം Trade list വരും. Trade select ചെയ്ത ശേഷം Shift (Shift 1 / Shift 2) ഉം Unit (I/II/III/IV) ഉം select ചെയ്യുക.</span>
+      </div>
+    </div>
+
+    <h3>Step 2 — Staff Details Enter ചെയ്യുക</h3>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-text">
+        <strong>Instructor / Staff name enter ചെയ്യുക</strong>
+        <span>Visit-ൽ ഉള്ള staff-ന്റെ പേരും designation-ഉം enter ചെയ്യുക. കൂടുതൽ staff ഉണ്ടെങ്കിൽ <span class="en">"+ Add Staff"</span> button press ചെയ്ത് add ചെയ്യാം.</span>
+      </div>
+    </div>
+
+    <h3>Step 3 — Checklist Mark ചെയ്യുക</h3>
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-text">
+        <strong>ഓരോ document/register-ന്റെ status mark ചെയ്യുക</strong>
+        <span>14 NSQF documents, Registers, Fire Extinguisher — ഓരോന്നിനും 3 options ഉണ്ട്:</span>
+      </div>
+    </div>
+    <div class="toggle-row">
+      <span class="badge yes">✅ Available</span>
+      <span class="badge no">❌ Not Available</span>
+      <span class="badge nu">⚠️ Not Updated</span>
+    </div>
+    <p style="font-size:13px;color:var(--muted);margin-top:4px;">Button ഒരു തവണ press ചെയ്താൽ ✅, വീണ്ടും press ചെയ്താൽ ❌, വീണ്ടും press ചെയ്താൽ ⚠️ — ഇങ്ങനെ change ആകും. Remark box-ൽ notes എഴുതാം.</p>
+
+    <h3>Step 4 — Save / Print</h3>
+    <div class="step">
+      <div class="step-num">6</div>
+      <div class="step-text">
+        <strong><span class="en">💾 Save Inspection</span> press ചെയ്യുക</strong>
+        <span>Cloud-ൽ save ആകും. ഏത് device-ൽ നിന്ന് login ചെയ്താലും ഈ record കാണാം.</span>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">7</div>
+      <div class="step-text">
+        <strong><span class="en">🖨️ Print Report</span> press ചെയ്യുക</strong>
+        <span>A4 format-ൽ ഒരു complete inspection report print ആകും. PDF ആയി save ചെയ്യാം.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="section purple">
+    <h2>📋 History — Past Records കാണുക</h2>
+    <p style="margin-bottom:12px;"><span class="en">History</span> tab-ൽ past inspection records എല്ലാം കാണാം. ഓരോ record-നും ഈ options ഉണ്ട്:</p>
+    <div class="step">
+      <div class="step-num">👁</div>
+      <div class="step-text">
+        <strong>View</strong>
+        <span>Record-ന്റെ full details കാണാൻ.</span>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">✏️</div>
+      <div class="step-text">
+        <strong>Edit</strong>
+        <span>Save ചെയ്ത record-ൽ changes വരുത്താൻ.</span>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">🖨️</div>
+      <div class="step-text">
+        <strong>Print</strong>
+        <span>ആ record-ന്റെ report print / PDF ആക്കാൻ.</span>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">🗑</div>
+      <div class="step-text">
+        <strong>Delete</strong>
+        <span>Record delete ചെയ്യാൻ.</span>
+      </div>
+    </div>
+    <div class="note">
+      ⚠️ <strong>Clear All</strong> ചെയ്യണമെങ്കിൽ <span class="en">DELETE</span> എന്ന് type ചെയ്യണം — accidental deletion ഒഴിവാക്കാൻ.
+    </div>
+  </div>
+
+  <!-- DATA STORAGE -->
+  <div class="section teal">
+    <h2>☁️ Data എവിടെ Save ആകുന്നു?</h2>
+    <p style="margin-bottom:14px;">App-ൽ <span class="en">Sign in</span> ചെയ്ത ശേഷം save ചെയ്യുന്ന data <strong>Google-ന്റെ Firebase Cloud Database</strong>-ൽ store ആകുന്നു. ഇത് Google Drive അല്ല — ഒരു secure online database ആണ്.</p>
+
+    <div class="cloud-diagram">
+      <div class="row">
+        <div class="cloud-box">📱 Inspector-ന്റെ Phone</div>
+        <div class="arrow">→</div>
+        <div class="cloud-box">🌐 Internet</div>
+        <div class="arrow">→</div>
+        <div class="cloud-box">☁️ Firebase Cloud</div>
+      </div>
+      <p style="margin-top:8px;font-size:12px;color:#0e7490;">Data cloud-ൽ save ആകുന്നു — phone-ൽ അല്ല</p>
+    </div>
+
+    <div class="note note-green">
+      ✅ Sign in ചെയ്തിട്ടുണ്ടെങ്കിൽ — <strong>ഏത് phone-ലും, ഏത് laptop-ലും, ഏത് browser-ലും</strong> same data കാണാം.<br><br>
+      ⚠️ Sign in ചെയ്തിട്ടില്ലെങ്കിൽ — data ആ device-ൽ മാത്രം save ആകും (cloud-ൽ ആകില്ല).
+    </div>
+
+    <div class="note note-blue" style="margin-top:10px;">
+      🔒 <strong>Privacy:</strong> ഓരോ inspector-ന്റെ data-ഉം separate ആണ്. ഒരാൾക്ക് മറ്റൊരാളുടെ data കാണാൻ കഴിയില്ല.
+    </div>
+  </div>
+
+  <!-- MULTIPLE USERS -->
+  <div class="section red">
+    <h2>👥 Multiple Users — എങ്ങനെ work ചെയ്യും?</h2>
+    <p style="margin-bottom:14px;">ഈ app-ന്റെ <strong>ഒരേ link</strong> ഉപയോഗിച്ച് Kerala-ലെ ഏതൊരു ITI Inspector-നും sign in ചെയ്ത് use ചെയ്യാം. ഓരോരുത്തർക്കും <strong>അവരുടെ Google Account</strong> ഉപയോഗിച്ച് login ആകാം.</p>
+
+    <div class="user-cards">
+      <div class="user-card">
+        <div class="icon">👨‍💼</div>
+        <strong>Inspector A</strong>
+        <span>a@gmail.com ഉപയോഗിച്ച് login ചെയ്യുന്നു. A-യുടെ inspections മാത്രം കാണുന്നു.</span>
+      </div>
+      <div class="user-card">
+        <div class="icon">👩‍💼</div>
+        <strong>Inspector B</strong>
+        <span>b@gmail.com ഉപയോഗിച്ച് login ചെയ്യുന്നു. B-യുടെ inspections മാത്രം കാണുന്നു.</span>
+      </div>
+    </div>
+
+    <div class="cloud-diagram">
+      <div class="row">
+        <div class="cloud-box">👨‍💼 Inspector A<br><small>A-യുടെ data</small></div>
+        <div class="arrow">↘</div>
+      </div>
+      <div class="row">
+        <div class="cloud-box" style="background:#eff6ff;border-color:#3b82f6;padding:12px 20px;">
+          ☁️ Firebase Cloud<br><small style="color:#6b7280;">ഓരോരുത്തരുടെ data<br>separately store ആകുന്നു</small>
+        </div>
+      </div>
+      <div class="row">
+        <div class="arrow">↗</div>
+        <div class="cloud-box">👩‍💼 Inspector B<br><small>B-യുടെ data</small></div>
+      </div>
+    </div>
+
+    <div class="note note-green">
+      ✅ App share ചെയ്യേണ്ടത് ഈ link മാത്രം:<br>
+      <div class="link-box">iticopadvpm-droid.github.io/iti-inspection-app/</div>
+      ആർക്കും ഈ link തുറന്ന് Google account കൊണ്ട് sign in ചെയ്ത് use ചെയ്യാം.
+    </div>
+  </div>
+
+  <!-- TIPS -->
+  <div class="section">
+    <h2>💡 Useful Tips</h2>
+    <div class="step">
+      <div class="step-num">📌</div>
+      <div class="step-text">
+        <strong>Phone Home Screen-ൽ add ചെയ്യാം</strong>
+        <span>Browser-ൽ link തുറന്ന് "Add to Home Screen" select ചെയ്താൽ app icon-പോലെ phone-ൽ കാണും.</span>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">📤</div>
+      <div class="step-text">
+        <strong>Export / Import JSON</strong>
+        <span>History page-ൽ "⬇️ Export JSON" button ഉപയോഗിച്ച് backup file download ചെയ്യാം. മറ്റൊരു device-ൽ "⬆️ Import JSON" ഉപയോഗിച്ച് restore ചെയ്യാം.</span>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">➕</div>
+      <div class="step-text">
+        <strong>Custom Checklist Items</strong>
+        <span>Default list-ൽ ഇല്ലാത്ത items inspection-ൽ add ചെയ്യാം. Profile page-ൽ default custom items set ചെയ്യാം.</span>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">🔄</div>
+      <div class="step-text">
+        <strong>Internet ഇല്ലാതെ?</strong>
+        <span>Sign in ചെയ്തിട്ടില്ലെങ്കിൽ app device-ൽ work ചെയ്യും, data local-ൽ save ആകും. Internet ഉള്ളപ്പോൾ sign in ചെയ്ത് cloud-ൽ sync ചെയ്യാം.</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  ITI Inspection App — Govt. International ITI Dhanuvachapuram, Kerala<br>
+  Prepared by: Dinoj, Senior Instructor (COPA)
+</footer>
+
+</body>
+</html>
