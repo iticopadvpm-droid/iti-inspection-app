@@ -900,13 +900,14 @@ function loadTrades() {
   // Save District + ITI when user picks an ITI
   localStorage.setItem('lastITISelection', JSON.stringify({ district, itiIdx }));
   tradeSel.disabled = false;
-  tradeSel.onchange = function() {
-    // Reset shift/unit when trade changes
-    document.getElementById('sel-shift').value = '';
-    document.getElementById('sel-unit').value = '';
-    document.getElementById('shift-unit-row').style.display = tradeSel.value ? 'block' : 'none';
-    loadChecklist();
-  };
+}
+
+function tradeChanged() {
+  const tradeSel = document.getElementById('sel-trade');
+  document.getElementById('sel-shift').value = '';
+  document.getElementById('sel-unit').value = '';
+  document.getElementById('shift-unit-row').style.display = tradeSel.value ? 'block' : 'none';
+  loadChecklist();
 }
 
 function loadChecklist() {
