@@ -305,8 +305,15 @@ textarea { resize: vertical; min-height: 60px; }
       <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Enter the details of staff present at the time of inspection.</p>
       <label>Instructor Name</label>
       <input type="text" id="staff-instructor" placeholder="e.g. Rajan K.P.">
-      <label>Instructor Designation / Trade</label>
-      <input type="text" id="staff-instructor-desig" placeholder="e.g. Instructor – Electrician">
+      <label>Instructor Designation</label>
+      <select id="staff-instructor-desig-sel" onchange="handleDesigSelect()" style="margin-bottom:6px;">
+        <option value="">-- Select Designation --</option>
+        <option value="Senior Instructor">Senior Instructor</option>
+        <option value="Junior Instructor">Junior Instructor</option>
+        <option value="Workshop Attendant">Workshop Attendant</option>
+        <option value="__other__">Other (type manually)</option>
+      </select>
+      <input type="text" id="staff-instructor-desig" placeholder="Type designation manually…" style="display:none;">
       <label>Workshop Attendant Name</label>
       <input type="text" id="staff-attendant" placeholder="e.g. Suresh M.">
       <label>Other Staff Present <span style="font-weight:400;color:var(--muted);">(names, designations)</span></label>
@@ -637,6 +644,63 @@ function showPage(name) {
 }
 
 // ================================================================
+// DESIGNATION SELECT HELPER
+// ================================================================
+function handleEditDesigSelect() {
+  const sel = document.getElementById('edit-staff-instructor-desig-sel');
+  const inp = document.getElementById('edit-staff-instructor-desig');
+  if (!sel || !inp) return;
+  if (sel.value === '__other__') { inp.style.display = 'block'; inp.focus(); }
+  else { inp.style.display = 'none'; inp.value = ''; }
+}
+
+function getEditDesigValue() {
+  const sel = document.getElementById('edit-staff-instructor-desig-sel');
+  const inp = document.getElementById('edit-staff-instructor-desig');
+  if (!sel) return '';
+  return sel.value === '__other__' ? (inp?.value.trim() || '') : sel.value;
+}
+
+function handleDesigSelect() {
+  const sel = document.getElementById('staff-instructor-desig-sel');
+  const inp = document.getElementById('staff-instructor-desig');
+  if (sel.value === '__other__') {
+    inp.style.display = 'block';
+    inp.focus();
+  } else {
+    inp.style.display = 'none';
+    inp.value = '';
+  }
+}
+
+function getDesigValue() {
+  const sel = document.getElementById('staff-instructor-desig-sel');
+  const inp = document.getElementById('staff-instructor-desig');
+  if (!sel) return '';
+  return sel.value === '__other__' ? inp.value.trim() : sel.value;
+}
+
+function setDesigValue(val) {
+  const sel = document.getElementById('staff-instructor-desig-sel');
+  const inp = document.getElementById('staff-instructor-desig');
+  if (!sel) return;
+  const presets = ['Senior Instructor','Junior Instructor','Workshop Attendant'];
+  if (presets.includes(val)) {
+    sel.value = val;
+    inp.style.display = 'none';
+    inp.value = '';
+  } else if (val) {
+    sel.value = '__other__';
+    inp.style.display = 'block';
+    inp.value = val;
+  } else {
+    sel.value = '';
+    inp.style.display = 'none';
+    inp.value = '';
+  }
+}
+
+// ================================================================
 // CASCADING DROPDOWNS
 // ================================================================
 function loadITIs() {
@@ -713,9 +777,10 @@ function loadChecklist() {
 
   // Show staff card and clear fields
   document.getElementById('staff-card').style.display = 'block';
-  ['staff-instructor','staff-instructor-desig','staff-attendant','staff-others','staff-remarks'].forEach(id => {
+  ['staff-instructor','staff-attendant','staff-others','staff-remarks'].forEach(id => {
     document.getElementById(id).value = '';
   });
+  setDesigValue('');
 
   renderNSQF();
   renderRegItems();
@@ -862,7 +927,7 @@ function collectInspectionData() {
 
   const staff = {
     instructor:      document.getElementById('staff-instructor')?.value.trim() || '',
-    instructorDesig: document.getElementById('staff-instructor-desig')?.value.trim() || '',
+    instructorDesig: getDesigValue(),
     attendant:       document.getElementById('staff-attendant')?.value.trim() || '',
     others:          document.getElementById('staff-others')?.value.trim() || '',
     remarks:         document.getElementById('staff-remarks')?.value.trim() || ''
@@ -1239,8 +1304,15 @@ function editRecord(id) {
     <div style="font-weight:700;font-size:13px;color:var(--primary-dark);margin-bottom:9px;">👥 Staff Details</div>
     <label style="font-size:12px;font-weight:600;color:var(--muted);">Instructor Name</label>
     <input type="text" id="edit-staff-instructor" value="${s.instructor||''}" placeholder="Instructor Name" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;margin-bottom:7px;">
-    <label style="font-size:12px;font-weight:600;color:var(--muted);">Instructor Designation / Trade</label>
-    <input type="text" id="edit-staff-instructor-desig" value="${s.instructorDesig||''}" placeholder="e.g. Instructor – Electrician" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;margin-bottom:7px;">
+    <label style="font-size:12px;font-weight:600;color:var(--muted);">Instructor Designation</label>
+    <select id="edit-staff-instructor-desig-sel" onchange="handleEditDesigSelect()" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;margin-bottom:4px;">
+      <option value="">-- Select Designation --</option>
+      <option value="Senior Instructor"   ${['Senior Instructor'].includes(s.instructorDesig)?'selected':''}>Senior Instructor</option>
+      <option value="Junior Instructor"   ${['Junior Instructor'].includes(s.instructorDesig)?'selected':''}>Junior Instructor</option>
+      <option value="Workshop Attendant"  ${['Workshop Attendant'].includes(s.instructorDesig)?'selected':''}>Workshop Attendant</option>
+      <option value="__other__" ${s.instructorDesig && !['Senior Instructor','Junior Instructor','Workshop Attendant'].includes(s.instructorDesig)?'selected':''}>Other (type manually)</option>
+    </select>
+    <input type="text" id="edit-staff-instructor-desig" value="${s.instructorDesig && !['Senior Instructor','Junior Instructor','Workshop Attendant'].includes(s.instructorDesig) ? s.instructorDesig : ''}" placeholder="Type designation…" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;margin-bottom:7px;display:${s.instructorDesig && !['Senior Instructor','Junior Instructor','Workshop Attendant'].includes(s.instructorDesig)?'block':'none'};">
     <label style="font-size:12px;font-weight:600;color:var(--muted);">Workshop Attendant</label>
     <input type="text" id="edit-staff-attendant" value="${s.attendant||''}" placeholder="Attendant Name" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;margin-bottom:7px;">
     <label style="font-size:12px;font-weight:600;color:var(--muted);">Other Staff Present</label>
@@ -1305,7 +1377,7 @@ function saveEditModal() {
   // Collect edited staff details
   window._editData.staff = {
     instructor:      document.getElementById('edit-staff-instructor')?.value.trim() || '',
-    instructorDesig: document.getElementById('edit-staff-instructor-desig')?.value.trim() || '',
+    instructorDesig: getEditDesigValue(),
     attendant:       document.getElementById('edit-staff-attendant')?.value.trim() || '',
     others:          document.getElementById('edit-staff-others')?.value.trim() || '',
     remarks:         document.getElementById('edit-staff-remarks')?.value.trim() || ''
@@ -1347,9 +1419,15 @@ function deleteRecord(id) {
 }
 
 function clearAllHistory() {
-  if (!confirm('Delete ALL inspection history? This cannot be undone.')) return;
+  const typed = prompt('⚠️ This will permanently delete ALL inspection history.\n\nType  DELETE  (in capitals) to confirm:');
+  if (typed === null) return; // cancelled
+  if (typed.trim() !== 'DELETE') {
+    alert('❌ Not deleted. You must type DELETE exactly to confirm.');
+    return;
+  }
   localStorage.removeItem('inspectionHistory');
   renderHistory();
+  alert('✅ All inspection history cleared.');
 }
 
 // ================================================================
