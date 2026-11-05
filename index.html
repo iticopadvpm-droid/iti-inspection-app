@@ -328,9 +328,8 @@ textarea { resize: vertical; min-height: 60px; }
           <label>Shift</label>
           <select id="sel-shift">
             <option value="">-- Select Shift --</option>
-            <option value="Morning Shift">Morning Shift</option>
-            <option value="Evening Shift">Evening Shift</option>
-            <option value="Single Shift">Single Shift</option>
+            <option value="Shift 1">Shift 1</option>
+            <option value="Shift 2">Shift 2</option>
           </select>
         </div>
         <div>
@@ -1404,9 +1403,8 @@ function editRecord(id) {
       <label style="font-size:12px;font-weight:600;color:var(--muted);">Shift</label>
       <select id="edit-shift" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;">
         <option value="">— Not set —</option>
-        <option value="Morning Shift" ${rec.shift==='Morning Shift'?'selected':''}>Morning Shift</option>
-        <option value="Evening Shift" ${rec.shift==='Evening Shift'?'selected':''}>Evening Shift</option>
-        <option value="Single Shift"  ${rec.shift==='Single Shift'?'selected':''}>Single Shift</option>
+        <option value="Shift 1" ${rec.shift==='Shift 1'?'selected':''}>Shift 1</option>
+        <option value="Shift 2" ${rec.shift==='Shift 2'?'selected':''}>Shift 2</option>
       </select>
     </div>
     <div>
