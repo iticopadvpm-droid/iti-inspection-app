@@ -308,12 +308,12 @@ textarea { resize: vertical; min-height: 60px; }
     <input type="text" id="insp-date" readonly>
 
     <label>District</label>
-    <select id="sel-district" onchange="loadITIs()">
+    <select id="sel-district" onchange="districtChanged()">
       <option value="">-- Select District --</option>
     </select>
 
     <label>ITI Name</label>
-    <select id="sel-iti" onchange="loadTrades()" disabled>
+    <select id="sel-iti" onchange="itiChanged()" disabled>
       <option value="">-- Select District First --</option>
     </select>
 
@@ -496,7 +496,7 @@ textarea { resize: vertical; min-height: 60px; }
     <p id="trade-warn-msg" style="font-size:14px;color:#374151;margin:10px 0 20px;line-height:1.5;"></p>
     <div style="display:flex;flex-direction:column;gap:10px;">
       <button onclick="tradeWarnSaveAndSwitch()" style="background:#1a56db;color:#fff;border:none;padding:10px 16px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">💾 Save &amp; Switch Trade</button>
-      <button onclick="tradeWarnSwitchAnyway()" style="background:#dc2626;color:#fff;border:none;padding:10px 16px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">🔄 Switch Without Saving</button>
+      <button onclick="tradeWarnSwitchAnyway()" style="background:#dc2626;color:#fff;border:none;padding:10px 16px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">🗑 Discard Marks &amp; Switch</button>
       <button onclick="tradeWarnCancel()" style="background:#f3f4f6;color:#374151;border:none;padding:10px 16px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">✖ Cancel</button>
     </div>
   </div>
@@ -916,30 +916,102 @@ function loadTrades() {
   tradeSel.disabled = false;
 }
 
-// Store the previous trade value to restore if user cancels
+// ── Unsaved marks protection ──────────────────────────────────────
+// _warnPending stores what to do after user decides
 let _prevTrade = '';
-
-function tradeChanged() {
-  const tradeSel = document.getElementById('sel-trade');
-  const newTrade = tradeSel.value;
-
-  if (hasUnsavedMarks()) {
-    const prevName = _prevTrade || 'current trade';
-    document.getElementById('trade-warn-msg').textContent =
-      `You have marked items for "${prevName}". If you switch trade now, those marks will be lost.`;
-    document.getElementById('trade-warn-modal').classList.add('open');
-    // Store new selection; revert select to previous so user sees old value while deciding
-    tradeSel._pendingTrade = newTrade;
-    tradeSel.value = _prevTrade;
-    return;
-  }
-
-  _prevTrade = newTrade;
-  applyTradeSwitch(newTrade);
-}
+let _warnPending = null; // { action: 'district'|'iti'|'trade', prevDistrict, prevIti }
 
 function hasUnsavedMarks() {
   return Object.keys(statusMap).length > 0;
+}
+
+function showUnsavedWarning(actionFn, cancelFn, label) {
+  const tradeName = _prevTrade || 'current trade';
+  document.getElementById('trade-warn-msg').textContent =
+    `You have unsaved marks for "${tradeName}". Changing ${label} will lose those marks.`;
+  _warnPending = { actionFn, cancelFn };
+  document.getElementById('trade-warn-modal').classList.add('open');
+}
+
+async function tradeWarnSaveAndSwitch() {
+  document.getElementById('trade-warn-modal').classList.remove('open');
+  if (!_warnPending) return;
+  await saveInspection();
+  _warnPending.actionFn();
+  _warnPending = null;
+}
+
+function tradeWarnSwitchAnyway() {
+  document.getElementById('trade-warn-modal').classList.remove('open');
+  if (!_warnPending) return;
+  Object.keys(statusMap).forEach(k => delete statusMap[k]);
+  clearDraft();
+  _prevTrade = '';
+  _warnPending.actionFn();
+  _warnPending = null;
+}
+
+function tradeWarnCancel() {
+  document.getElementById('trade-warn-modal').classList.remove('open');
+  if (!_warnPending) return;
+  _warnPending.cancelFn();
+  _warnPending = null;
+}
+
+// ── District changed ──────────────────────────────────────────────
+function districtChanged() {
+  const distSel = document.getElementById('sel-district');
+  const newDistrict = distSel.value;
+  if (hasUnsavedMarks()) {
+    const prev = distSel._prevDistrict || '';
+    showUnsavedWarning(
+      () => { distSel._prevDistrict = newDistrict; loadITIs(); },
+      () => { distSel.value = prev; }
+    , 'district');
+    distSel._prevDistrict = distSel._prevDistrict || '';
+    distSel.value = prev;    // revert while deciding
+    distSel._prevDistrict = prev;
+    distSel._pendingDistrict = newDistrict;
+    // override actionFn to use pending value
+    _warnPending.actionFn = () => { distSel.value = newDistrict; distSel._prevDistrict = newDistrict; loadITIs(); };
+    return;
+  }
+  distSel._prevDistrict = newDistrict;
+  loadITIs();
+}
+
+// ── ITI changed ───────────────────────────────────────────────────
+function itiChanged() {
+  const itiSel = document.getElementById('sel-iti');
+  const newIti = itiSel.value;
+  if (hasUnsavedMarks()) {
+    const prev = itiSel._prevIti || '';
+    showUnsavedWarning(
+      () => { itiSel._prevIti = newIti; loadTrades(); },
+      () => { itiSel.value = prev; }
+    , 'ITI');
+    itiSel.value = prev;    // revert while deciding
+    itiSel._prevIti = prev;
+    _warnPending.actionFn = () => { itiSel.value = newIti; itiSel._prevIti = newIti; loadTrades(); };
+    return;
+  }
+  itiSel._prevIti = newIti;
+  loadTrades();
+}
+
+// ── Trade changed ─────────────────────────────────────────────────
+function tradeChanged() {
+  const tradeSel = document.getElementById('sel-trade');
+  const newTrade = tradeSel.value;
+  if (hasUnsavedMarks()) {
+    showUnsavedWarning(
+      () => { applyTradeSwitch(newTrade); },
+      () => { tradeSel.value = _prevTrade; }
+    , 'trade');
+    tradeSel.value = _prevTrade;  // revert while deciding
+    return;
+  }
+  applyTradeSwitch(newTrade);
 }
 
 function applyTradeSwitch(trade) {
@@ -950,31 +1022,6 @@ function applyTradeSwitch(trade) {
   document.getElementById('sel-unit').value = '';
   document.getElementById('shift-unit-row').style.display = trade ? 'block' : 'none';
   loadChecklist();
-}
-
-async function tradeWarnSaveAndSwitch() {
-  document.getElementById('trade-warn-modal').classList.remove('open');
-  const tradeSel = document.getElementById('sel-trade');
-  const pending = tradeSel._pendingTrade;
-  // Save current inspection first
-  await saveInspection();
-  // Then switch
-  applyTradeSwitch(pending);
-}
-
-function tradeWarnSwitchAnyway() {
-  document.getElementById('trade-warn-modal').classList.remove('open');
-  const tradeSel = document.getElementById('sel-trade');
-  const pending = tradeSel._pendingTrade;
-  // Clear all marks
-  Object.keys(statusMap).forEach(k => delete statusMap[k]);
-  clearDraft();
-  applyTradeSwitch(pending);
-}
-
-function tradeWarnCancel() {
-  document.getElementById('trade-warn-modal').classList.remove('open');
-  // tradeSel already reverted to _prevTrade in tradeChanged()
 }
 
 function loadChecklist() {
@@ -1441,6 +1488,9 @@ function resetForm() {
   if (!confirm('Reset all checklist entries?')) return;
   Object.keys(statusMap).forEach(k => delete statusMap[k]);
   _prevTrade = '';
+  _warnPending = null;
+  document.getElementById('sel-district')._prevDistrict = '';
+  document.getElementById('sel-iti')._prevIti = '';
   localStorage.removeItem('lastITISelection');
   clearDraft();
   document.getElementById('sel-district').value = '';
