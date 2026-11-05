@@ -488,6 +488,20 @@ textarea { resize: vertical; min-height: 60px; }
   </div>
 </div>
 
+<!-- Trade change warning dialog -->
+<div class="modal-overlay" id="trade-warn-modal">
+  <div class="modal-box" style="max-width:360px;text-align:center;">
+    <div style="font-size:36px;margin-bottom:10px;">⚠️</div>
+    <h2 style="color:#b45309;">Unsaved Marks!</h2>
+    <p id="trade-warn-msg" style="font-size:14px;color:#374151;margin:10px 0 20px;line-height:1.5;"></p>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <button onclick="tradeWarnSaveAndSwitch()" style="background:#1a56db;color:#fff;border:none;padding:10px 16px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">💾 Save &amp; Switch Trade</button>
+      <button onclick="tradeWarnSwitchAnyway()" style="background:#dc2626;color:#fff;border:none;padding:10px 16px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">🔄 Switch Without Saving</button>
+      <button onclick="tradeWarnCancel()" style="background:#f3f4f6;color:#374151;border:none;padding:10px 16px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">✖ Cancel</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ================================================================
 // DATA: All 100 ITIs across Kerala
@@ -902,12 +916,65 @@ function loadTrades() {
   tradeSel.disabled = false;
 }
 
+// Store the previous trade value to restore if user cancels
+let _prevTrade = '';
+
 function tradeChanged() {
   const tradeSel = document.getElementById('sel-trade');
+  const newTrade = tradeSel.value;
+
+  if (hasUnsavedMarks()) {
+    const prevName = _prevTrade || 'current trade';
+    document.getElementById('trade-warn-msg').textContent =
+      `You have marked items for "${prevName}". If you switch trade now, those marks will be lost.`;
+    document.getElementById('trade-warn-modal').classList.add('open');
+    // Store new selection; revert select to previous so user sees old value while deciding
+    tradeSel._pendingTrade = newTrade;
+    tradeSel.value = _prevTrade;
+    return;
+  }
+
+  _prevTrade = newTrade;
+  applyTradeSwitch(newTrade);
+}
+
+function hasUnsavedMarks() {
+  return Object.keys(statusMap).length > 0;
+}
+
+function applyTradeSwitch(trade) {
+  const tradeSel = document.getElementById('sel-trade');
+  tradeSel.value = trade;
+  _prevTrade = trade;
   document.getElementById('sel-shift').value = '';
   document.getElementById('sel-unit').value = '';
-  document.getElementById('shift-unit-row').style.display = tradeSel.value ? 'block' : 'none';
+  document.getElementById('shift-unit-row').style.display = trade ? 'block' : 'none';
   loadChecklist();
+}
+
+async function tradeWarnSaveAndSwitch() {
+  document.getElementById('trade-warn-modal').classList.remove('open');
+  const tradeSel = document.getElementById('sel-trade');
+  const pending = tradeSel._pendingTrade;
+  // Save current inspection first
+  await saveInspection();
+  // Then switch
+  applyTradeSwitch(pending);
+}
+
+function tradeWarnSwitchAnyway() {
+  document.getElementById('trade-warn-modal').classList.remove('open');
+  const tradeSel = document.getElementById('sel-trade');
+  const pending = tradeSel._pendingTrade;
+  // Clear all marks
+  Object.keys(statusMap).forEach(k => delete statusMap[k]);
+  clearDraft();
+  applyTradeSwitch(pending);
+}
+
+function tradeWarnCancel() {
+  document.getElementById('trade-warn-modal').classList.remove('open');
+  // tradeSel already reverted to _prevTrade in tradeChanged()
 }
 
 function loadChecklist() {
@@ -915,6 +982,8 @@ function loadChecklist() {
   const itiIdx = document.getElementById('sel-iti').value;
   const trade = document.getElementById('sel-trade').value;
   if (!trade) return;
+  // Clear any leftover marks from previous trade
+  Object.keys(statusMap).forEach(k => delete statusMap[k]);
 
   const iti = ITI_DATA[district][parseInt(itiIdx)];
   function updateChkTitle() {
@@ -1371,6 +1440,7 @@ function buildReportHTML(data) {
 function resetForm() {
   if (!confirm('Reset all checklist entries?')) return;
   Object.keys(statusMap).forEach(k => delete statusMap[k]);
+  _prevTrade = '';
   localStorage.removeItem('lastITISelection');
   clearDraft();
   document.getElementById('sel-district').value = '';
