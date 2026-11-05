@@ -673,6 +673,9 @@ document.addEventListener('DOMContentLoaded', () => {
     distSel.value = lastSel.district;
     loadITIs(lastSel.itiIdx);
   }
+
+  // Check for unsaved draft
+  checkDraftOnLoad();
 });
 
 // ================================================================
@@ -983,7 +986,7 @@ function createCheckRow(section, idx, name, deletable = false) {
       ${deletable ? `<button class="chk-delete no-print" title="Remove item" onclick="removeCustom(${idx})">🗑</button>` : ''}
     </div>
     <div class="chk-remark">
-      <input type="text" placeholder="" id="remark-${section}-${idx}" value="${getRemark(section,idx)}" oninput="updateSummary()">
+      <input type="text" placeholder="" id="remark-${section}-${idx}" value="${getRemark(section,idx)}" oninput="updateSummary();saveDraft()">
     </div>
   `;
   return div;
@@ -1010,6 +1013,129 @@ function setStatus(section, idx, val) {
   const labels = ['yes','no','nu'];
   btns.forEach((b, i) => { if (labels[i] === val) b.className = `sel-${val}`; });
   updateSummary();
+  saveDraft();
+}
+
+// ================================================================
+// DRAFT AUTO-SAVE
+// ================================================================
+function saveDraft() {
+  const district = document.getElementById('sel-district').value;
+  const itiIdx   = document.getElementById('sel-iti').value;
+  const trade    = document.getElementById('sel-trade').value;
+  if (!district || itiIdx === '' || !trade) return;
+
+  const iti = ITI_DATA[district][parseInt(itiIdx)];
+  const shift = document.getElementById('sel-shift').value;
+  const unit  = document.getElementById('sel-unit').value;
+
+  // Collect remarks too
+  const nsqfRemarks = {}, regRemarks = {}, customRemarks = {};
+  NSQF_DOCS.forEach((_, i) => {
+    const el = document.getElementById(`remark-nsqf-${i}`);
+    if (el && el.value) nsqfRemarks[i] = el.value;
+  });
+  DEFAULT_REG.forEach((_, i) => {
+    const el = document.getElementById(`remark-reg-${i}`);
+    if (el && el.value) regRemarks[i] = el.value;
+  });
+
+  const draft = {
+    district, itiIdx, itiName: iti.name, trade, shift, unit,
+    statusMap: JSON.parse(JSON.stringify(statusMap)),
+    nsqfRemarks, regRemarks,
+    customItems: customItems.map(c => c.name),
+    savedAt: new Date().toISOString()
+  };
+  localStorage.setItem('inspectionDraft', JSON.stringify(draft));
+}
+
+function clearDraft() {
+  localStorage.removeItem('inspectionDraft');
+  hideDraftBanner();
+}
+
+function showDraftBanner(draft) {
+  const existing = document.getElementById('draft-banner');
+  if (existing) existing.remove();
+
+  const banner = document.createElement('div');
+  banner.id = 'draft-banner';
+  banner.style.cssText = 'background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:14px 16px;margin-bottom:14px;';
+  const shiftUnit = [draft.shift, draft.unit].filter(Boolean).join(' · ');
+  banner.innerHTML = `
+    <div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:6px;">📝 Unsaved Draft Found</div>
+    <div style="font-size:13px;color:#78350f;margin-bottom:10px;">
+      <strong>${draft.itiName}</strong> — ${draft.trade}${shiftUnit ? ' · ' + shiftUnit : ''}<br>
+      <span style="font-size:12px;color:#9a3412;">Last auto-saved: ${new Date(draft.savedAt).toLocaleString('en-IN')}</span>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-warning btn-sm" onclick="resumeDraft()">▶️ Resume Draft</button>
+      <button class="btn btn-outline btn-sm" onclick="discardDraft()">🗑 Discard</button>
+    </div>`;
+  const selCard = document.querySelector('#page-home .card');
+  selCard.parentNode.insertBefore(banner, selCard.nextSibling);
+}
+
+function hideDraftBanner() {
+  const b = document.getElementById('draft-banner');
+  if (b) b.remove();
+}
+
+function resumeDraft() {
+  const draft = JSON.parse(localStorage.getItem('inspectionDraft') || 'null');
+  if (!draft) return;
+
+  // Restore district
+  document.getElementById('sel-district').value = draft.district;
+  loadITIs(draft.itiIdx);
+
+  // Wait for dropdowns, then restore trade
+  setTimeout(() => {
+    const tradeSel = document.getElementById('sel-trade');
+    tradeSel.value = draft.trade;
+    // Show shift/unit row
+    document.getElementById('shift-unit-row').style.display = 'block';
+    document.getElementById('sel-shift').value = draft.shift || '';
+    document.getElementById('sel-unit').value  = draft.unit  || '';
+
+    // Restore custom items
+    if (draft.customItems && draft.customItems.length) {
+      customItems = draft.customItems.map(name => ({ name }));
+    }
+
+    // Load checklist UI
+    loadChecklist();
+
+    // Restore statusMap + remarks after checklist renders
+    setTimeout(() => {
+      Object.assign(statusMap, draft.statusMap);
+
+      // Re-render toggle buttons
+      NSQF_DOCS.forEach((_, i) => {
+        const s = getStatus('nsqf', i);
+        if (s) { const row = document.getElementById(`row-nsqf-${i}`); if (row) { row.querySelectorAll('.status-toggle button').forEach(b => b.className=''); const btns=row.querySelectorAll('.status-toggle button'); ['yes','no','nu'].forEach((v,j)=>{ if(v===s) btns[j].className=`sel-${s}`; }); } }
+        if (draft.nsqfRemarks[i]) { const el=document.getElementById(`remark-nsqf-${i}`); if(el) el.value=draft.nsqfRemarks[i]; }
+      });
+      DEFAULT_REG.forEach((_, i) => {
+        const s = getStatus('reg', i);
+        if (s) { const row = document.getElementById(`row-reg-${i}`); if (row) { row.querySelectorAll('.status-toggle button').forEach(b => b.className=''); const btns=row.querySelectorAll('.status-toggle button'); ['yes','no','nu'].forEach((v,j)=>{ if(v===s) btns[j].className=`sel-${s}`; }); } }
+        if (draft.regRemarks[i]) { const el=document.getElementById(`remark-reg-${i}`); if(el) el.value=draft.regRemarks[i]; }
+      });
+      updateSummary();
+      hideDraftBanner();
+    }, 100);
+  }, 100);
+}
+
+function discardDraft() {
+  if (!confirm('Discard unsaved draft?')) return;
+  clearDraft();
+}
+
+function checkDraftOnLoad() {
+  const draft = JSON.parse(localStorage.getItem('inspectionDraft') || 'null');
+  if (draft) showDraftBanner(draft);
 }
 
 function updateSummary() {
@@ -1110,6 +1236,7 @@ async function saveInspection() {
     const ok = await saveInspectionToCloud(record);
     if (ok) {
       _cloudHistory.unshift(record);
+      clearDraft();
       alert('✅ Inspection saved to cloud!');
       renderHistory();
     } else {
@@ -1123,6 +1250,7 @@ async function saveInspection() {
     const history = JSON.parse(localStorage.getItem('inspectionHistory') || '[]');
     history.unshift(record);
     localStorage.setItem('inspectionHistory', JSON.stringify(history));
+    clearDraft();
     alert('✅ Inspection saved (device only — sign in to sync to cloud).');
     renderHistory();
   }
@@ -1243,6 +1371,7 @@ function resetForm() {
   if (!confirm('Reset all checklist entries?')) return;
   Object.keys(statusMap).forEach(k => delete statusMap[k]);
   localStorage.removeItem('lastITISelection');
+  clearDraft();
   document.getElementById('sel-district').value = '';
   document.getElementById('sel-iti').innerHTML = '<option value="">-- Select District First --</option>';
   document.getElementById('sel-iti').disabled = true;
