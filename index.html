@@ -281,7 +281,7 @@ textarea { resize: vertical; min-height: 60px; }
 <div class="navbar">
   <h1>🏭 ITI Inspection</h1>
   <div class="nav-btns">
-    <button class="nav-btn active" onclick="showPage('home')">🏠 New</button>
+    <button class="nav-btn active" onclick="newInspectionPressed()">🏠 New</button>
     <button class="nav-btn" onclick="showPage('history')">📋 History</button>
     <button class="nav-btn" onclick="showPage('profile')">👤 Profile</button>
   </div>
@@ -705,6 +705,39 @@ function showPage(name) {
   document.querySelectorAll('.nav-btn').forEach(b => {
     if (b.getAttribute('onclick') && b.getAttribute('onclick').includes("'"+name+"'")) b.classList.add('active');
   });
+}
+
+function newInspectionPressed() {
+  if (hasUnsavedMarks()) {
+    const tradeName = _prevTrade || 'current trade';
+    document.getElementById('trade-warn-msg').textContent =
+      `You have unsaved marks for "${tradeName}". Save before starting a new inspection?`;
+    _warnPending = {
+      actionFn: () => { clearForNewInspection(); showPage('home'); },
+      cancelFn: () => {}
+    };
+    document.getElementById('trade-warn-modal').classList.add('open');
+    return;
+  }
+  clearForNewInspection();
+  showPage('home');
+}
+
+function clearForNewInspection() {
+  // Clear marks and draft
+  Object.keys(statusMap).forEach(k => delete statusMap[k]);
+  clearDraft();
+  _prevTrade = '';
+  _warnPending = null;
+  // Reset trade, shift, unit and checklist — keep District + ITI so inspector
+  // can quickly pick the next trade in the same ITI
+  const tradeSel = document.getElementById('sel-trade');
+  tradeSel.value = '';
+  document.getElementById('sel-shift').value = '';
+  document.getElementById('sel-unit').value = '';
+  document.getElementById('shift-unit-row').style.display = 'none';
+  document.getElementById('checklist-card').style.display = 'none';
+  document.getElementById('staff-card').style.display = 'none';
 }
 
 // ================================================================
