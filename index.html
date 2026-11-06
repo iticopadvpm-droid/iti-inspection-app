@@ -7,12 +7,7 @@
 
 <!-- Firebase SDK -->
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-  import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
-    from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-  import { getFirestore, collection, doc, setDoc, getDocs, deleteDoc, query, orderBy }
-    from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
-
+  const V = "https://www.gstatic.com/firebasejs/10.14.1/";
   const firebaseConfig = {
     apiKey: "AIzaSyDWRBHn7SENJuD4UyrnWaOTX5AKKBs8zkk",
     authDomain: "iti-inspection-app.firebaseapp.com",
@@ -22,26 +17,49 @@
     appId: "1:616563823326:web:2ca95fbd6f811d0f4de84f"
   };
 
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const db = getFirestore(app);
-  const provider = new GoogleAuthProvider();
+  // Load Firebase. If there is no internet, try again as soon as it comes back.
+  let loading = false;
+  async function initFirebase() {
+    if (window._fb || loading) return;
+    loading = true;
+    try {
+      const [appM, authM, fsM] = await Promise.all([
+        import(V + "firebase-app.js"), import(V + "firebase-auth.js"), import(V + "firebase-firestore.js")
+      ]);
+      const app = appM.initializeApp(firebaseConfig);
+      const auth = authM.getAuth(app);
+      const db = fsM.getFirestore(app);
+      const provider = new authM.GoogleAuthProvider();
+      window._fb = { auth, db, provider,
+        signInWithPopup: authM.signInWithPopup, signOut: authM.signOut, onAuthStateChanged: authM.onAuthStateChanged,
+        collection: fsM.collection, doc: fsM.doc, setDoc: fsM.setDoc, getDocs: fsM.getDocs,
+        deleteDoc: fsM.deleteDoc, query: fsM.query, orderBy: fsM.orderBy };
 
-  // Expose to global scope for non-module code
-  window._fb = { auth, db, provider, signInWithPopup, signOut, onAuthStateChanged,
-    collection, doc, setDoc, getDocs, deleteDoc, query, orderBy };
-
-  // Auth state listener
-  onAuthStateChanged(auth, user => {
-    window._fbUser = user || null;
-    updateAuthUI(user);
-    if (user) {
-      loadProfileFromCloud();
-      loadHistoryFromCloud();
-    } else {
-      renderHistory();
+      authM.onAuthStateChanged(auth, async user => {
+        window._fbUser = user || null;
+        if (user) localStorage.setItem('lastUid', user.uid);
+        updateAuthUI(user);
+        if (user) {
+          loadProfileFromCloud();
+          await loadHistoryFromCloud();
+          syncPendingInspections();
+          if (window.offerUnownedUpload) window.offerUnownedUpload();
+        } else {
+          renderHistory();
+        }
+      });
+    } catch (e) {
+      console.warn('Firebase unavailable (offline?)', e);
+      window._fbFailed = true;
+      if (window.showOfflineBanner) window.showOfflineBanner();
+    } finally {
+      loading = false;
     }
-  });
+  }
+  window.initFirebase = initFirebase;
+  initFirebase();
+  // A failed download can't be retried on the same page, so reconnect by reloading
+  window.addEventListener('online', () => { if (window._fbFailed && window.onInternetBack) window.onInternetBack(); });
 </script>
 
 <style>
@@ -296,9 +314,10 @@ textarea { resize: vertical; min-height: 60px; }
 
 <!-- AUTH BANNER -->
 <div id="auth-banner" style="background:#1e429f;color:#fff;padding:8px 16px;display:flex;align-items:center;justify-content:space-between;font-size:13px;gap:8px;flex-wrap:wrap;">
-  <span id="auth-status">⏳ Connecting to cloud...</span>
+  <span><span id="auth-status">⏳ Connecting to cloud...</span> <span id="sync-status" style="display:none;background:#fef3c7;color:#92400e;border-radius:10px;padding:1px 8px;font-size:11px;font-weight:700;margin-left:4px;"></span></span>
   <div style="display:flex;gap:8px;">
     <button id="btn-signin" onclick="fbSignIn()" class="btn btn-sm" style="background:#fff;color:#1e429f;display:none;">🔑 Sign in with Google</button>
+    <button id="btn-reconnect" onclick="location.reload()" class="btn btn-sm" style="background:#fff;color:#1e429f;display:none;">🔄 Reconnect</button>
     <button id="btn-signout" onclick="fbSignOut()" class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:#fff;display:none;">Sign Out</button>
   </div>
 </div>
@@ -312,7 +331,7 @@ textarea { resize: vertical; min-height: 60px; }
   <div class="card">
     <h2>🔍 Select ITI for Inspection</h2>
     <label>Inspection Date</label>
-    <input type="text" id="insp-date" readonly>
+    <input type="date" id="insp-date" onchange="if(this.value>todayISO())this.value=todayISO();saveDraft()">
 
     <label>District</label>
     <select id="sel-district" onchange="districtChanged()">
@@ -827,7 +846,7 @@ let editingId = null;   // inspection id being edited
 document.addEventListener('DOMContentLoaded', () => {
   // Set today's date
   const today = new Date();
-  document.getElementById('insp-date').value = today.toLocaleDateString('en-IN', {day:'2-digit',month:'2-digit',year:'numeric'});
+  setInspDateToday();
 
   // Populate district dropdown
   const distSel = document.getElementById('sel-district');
@@ -893,6 +912,7 @@ function newInspectionPressed() {
 function clearForNewInspection() {
   // Clear marks and draft
   Object.keys(statusMap).forEach(k => delete statusMap[k]);
+  _lastSavedId = null;
   clearDraft();
   _prevTrade = '';
   _warnPending = null;
@@ -928,7 +948,7 @@ function renderStaffRows() {
         ${staffRows.length > 1 ? `<button onclick="removeStaffRow(${i})" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:15px;" class="no-print">🗑</button>` : ''}
       </div>
       <label style="font-size:12px;font-weight:600;color:var(--muted);">Instructor Name</label>
-      <input type="text" value="${row.name||''}" oninput="staffRows[${i}].name=this.value" style="width:100%;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;margin-bottom:8px;">
+      <input type="text" value="${escHtml(row.name||'')}" oninput="staffRows[${i}].name=this.value" style="width:100%;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;margin-bottom:8px;">
       <label style="font-size:12px;font-weight:600;color:var(--muted);">Instructor Designation / Trade</label>
       <select onchange="handleStaffDesig(this,${i})" style="width:100%;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;margin-bottom:4px;">
         <option value="">-- Select --</option>
@@ -1127,6 +1147,7 @@ function loadTrades() {
 // _warnPending stores what to do after user decides
 let _prevTrade = '';
 let _dirty = false;   // true when marks/remarks changed since last save
+let _lastSavedId = null; // id of the record saved from the checklist on screen (Save again = update it)
 let _warnPending = null; // { action: 'district'|'iti'|'trade', prevDistrict, prevIti }
 
 function hasUnsavedMarks() {
@@ -1240,6 +1261,7 @@ function loadChecklist() {
   // Clear any leftover marks from previous trade
   Object.keys(statusMap).forEach(k => delete statusMap[k]);
   _dirty = false;
+  _lastSavedId = null;
 
   const iti = ITI_DATA[district][parseInt(itiIdx)];
   function updateChkTitle() {
@@ -1336,7 +1358,8 @@ function createCheckRow(section, idx, name) {
 }
 
 function escHtml(t) {
-  return String(t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  if (t === undefined || t === null) return '';
+  return String(t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
 function getItemList(section) {
@@ -1527,6 +1550,8 @@ function saveDraft() {
     district, itiIdx, itiName: iti.name, trade, shift, unit,
     statusMap: JSON.parse(JSON.stringify(statusMap)),
     nsqfRemarks, regRemarks,
+    inspDate: document.getElementById('insp-date').value,
+    savedId: _lastSavedId,
     nsqfItems:  nsqfItems.map(c => c.id ? { id: c.id, name: c.name } : { name: c.name }),
     regItems:   regItems.map(c => c.id ? { id: c.id, name: c.name } : { name: c.name }),
     customItems: customItems.map(c => c.name),
@@ -1551,7 +1576,7 @@ function showDraftBanner(draft) {
   banner.innerHTML = `
     <div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:6px;">📝 Unsaved Draft Found</div>
     <div style="font-size:13px;color:#78350f;margin-bottom:10px;">
-      <strong>${draft.itiName}</strong> — ${draft.trade}${shiftUnit ? ' · ' + shiftUnit : ''}<br>
+      <strong>${escHtml(draft.itiName)}</strong> — ${escHtml(draft.trade)}${draft.inspDate ? ' · ' + escHtml(isoToDisplayDate(draft.inspDate)) : ''}${shiftUnit ? ' · ' + shiftUnit : ''}<br>
       <span style="font-size:12px;color:#9a3412;">Last auto-saved: ${new Date(draft.savedAt).toLocaleString('en-IN')}</span>
     </div>
     <div style="display:flex;gap:8px;">
@@ -1585,6 +1610,7 @@ function resumeDraft() {
     document.getElementById('sel-unit').value  = draft.unit  || '';
 
     _prevTrade = draft.trade;
+    if (draft.inspDate) document.getElementById('insp-date').value = draft.inspDate;
 
     // Build checklist, then apply the draft's own item lists (edits/deletions)
     loadChecklist();
@@ -1602,6 +1628,7 @@ function resumeDraft() {
       });
     });
     renderNSQF(); renderRegItems(); renderCustomItems();
+    _lastSavedId = draft.savedId || null;
     _dirty = true;
     updateSummary();
     hideDraftBanner();
@@ -1665,11 +1692,11 @@ function collectInspectionData() {
   const district = document.getElementById('sel-district').value;
   const itiIdx   = document.getElementById('sel-iti').value;
   const trade    = document.getElementById('sel-trade').value;
-  const date     = document.getElementById('insp-date').value;
+  const date     = isoToDisplayDate(document.getElementById('insp-date').value) || isoToDisplayDate(todayISO());
   if (!district || itiIdx === '' || !trade) return null;
   const iti = ITI_DATA[district][parseInt(itiIdx)];
 
-  const prof = JSON.parse(localStorage.getItem('inspectorProfile') || '{}');
+  const prof = getProfile();
 
   const shift = document.getElementById('sel-shift').value;
   const unit  = document.getElementById('sel-unit').value;
@@ -1704,34 +1731,29 @@ async function saveInspection() {
   const data = collectInspectionData();
   if (!data) { alert('Please select District, ITI and Trade first.'); return; }
 
-  const id = Date.now().toString();
-  const record = { id, ...data, savedAt: new Date().toLocaleString('en-IN') };
+  // Saving the same checklist again updates that record instead of making a copy
+  const updating = !!_lastSavedId && getHistory().some(r => r.id === _lastSavedId);
+  const id = updating ? _lastSavedId : Date.now().toString();
+  const record = JSON.parse(JSON.stringify({ id, ...data, savedAt: new Date().toLocaleString('en-IN') }));
+  if (currentUid()) record._owner = currentUid();
 
+  // 1. Always save on the phone first — works with or without internet
+  const local = getLocalHistory().filter(r => r.id !== id);
+  local.unshift(record);
+  setLocalHistory(local);
+  _lastSavedId = id;
+  clearDraft();
+  _dirty = false;
+  renderHistory();
+
+  const head = updating ? '✅ Inspection updated (same record, no duplicate).' : '✅ Inspection saved.';
   if (window._fbUser) {
-    const ok = await saveInspectionToCloud(record);
-    if (ok) {
-      _cloudHistory.unshift(record);
-      clearDraft();
-      _dirty = false;
-      alert('✅ Inspection saved to cloud!');
-      renderHistory();
-    } else {
-      alert('⚠️ Cloud save failed. Saved locally instead.');
-      const history = JSON.parse(localStorage.getItem('inspectionHistory') || '[]');
-      history.unshift(record);
-      localStorage.setItem('inspectionHistory', JSON.stringify(history));
-      clearDraft();
-      _dirty = false;
-      renderHistory();
-    }
+    alert(head + '\n' + (navigator.onLine
+      ? 'Uploading to cloud…'
+      : 'No internet now — it will upload automatically when internet returns.'));
+    syncPendingInspections();
   } else {
-    const history = JSON.parse(localStorage.getItem('inspectionHistory') || '[]');
-    history.unshift(record);
-    localStorage.setItem('inspectionHistory', JSON.stringify(history));
-    clearDraft();
-    _dirty = false;
-    alert('✅ Inspection saved (device only — sign in to sync to cloud).');
-    renderHistory();
+    alert(head + '\nSaved on this phone. Sign in with Google to upload it to the cloud.');
   }
 }
 
@@ -1774,7 +1796,7 @@ function buildReportHTML(data) {
         <td style="text-align:center;width:40px;">${sno++}</td>
         <td style="padding:6px 8px;">${escHtml(itemText(item))}</td>
         <td style="text-align:center;white-space:nowrap;">${statusLabel(item.status)}</td>
-        <td style="padding:6px 8px;font-size:12px;color:#374151;">${item.remark || ''}</td>
+        <td style="padding:6px 8px;font-size:12px;color:#374151;">${escHtml(item.remark || '')}</td>
       </tr>`;
     });
   });
@@ -1807,25 +1829,25 @@ function buildReportHTML(data) {
   <h1>Government of Kerala — Directorate of Employment & Training</h1>
   <h2>ITI Inspection Report</h2>
   <div class="info-grid">
-    <div class="info-row"><strong>ITI Name:</strong> ${data.itiName}</div>
-    <div class="info-row"><strong>ITI Code:</strong> ${data.itiCode}</div>
-    <div class="info-row"><strong>District:</strong> ${data.district}</div>
-    <div class="info-row"><strong>Trade:</strong> ${data.trade}</div>
-    <div class="info-row"><strong>Shift:</strong> ${data.shift || '—'}</div>
-    <div class="info-row"><strong>Unit:</strong> ${data.unit || '—'}</div>
-    <div class="info-row"><strong>Inspection Date:</strong> ${data.date}</div>
-    <div class="info-row"><strong>Inspector Name:</strong> ${prof.name || '—'}</div>
-    <div class="info-row"><strong>Designation:</strong> ${prof.desig || '—'}</div>
-    <div class="info-row"><strong>Office:</strong> ${prof.office || '—'}</div>
+    <div class="info-row"><strong>ITI Name:</strong> ${escHtml(data.itiName)}</div>
+    <div class="info-row"><strong>ITI Code:</strong> ${escHtml(data.itiCode)}</div>
+    <div class="info-row"><strong>District:</strong> ${escHtml(data.district)}</div>
+    <div class="info-row"><strong>Trade:</strong> ${escHtml(data.trade)}</div>
+    <div class="info-row"><strong>Shift:</strong> ${escHtml(data.shift || '—')}</div>
+    <div class="info-row"><strong>Unit:</strong> ${escHtml(data.unit || '—')}</div>
+    <div class="info-row"><strong>Inspection Date:</strong> ${escHtml(data.date)}</div>
+    <div class="info-row"><strong>Inspector Name:</strong> ${escHtml(prof.name || '—')}</div>
+    <div class="info-row"><strong>Designation:</strong> ${escHtml(prof.desig || '—')}</div>
+    <div class="info-row"><strong>Office:</strong> ${escHtml(prof.office || '—')}</div>
   </div>
   ${(data.staff && data.staff.list && data.staff.list.length) ? `
   <div style="border:1px solid #ccc;border-radius:6px;padding:10px 12px;margin-bottom:14px;background:#f0f4ff;">
     <div style="font-weight:700;font-size:13px;color:#1e3a8a;margin-bottom:7px;">👥 Staff Present During Inspection</div>
     <table style="width:100%;border-collapse:collapse;font-size:12px;">
       <tr><th style="text-align:left;padding:4px 8px;background:#dbeafe;color:#1e40af;">#</th><th style="text-align:left;padding:4px 8px;background:#dbeafe;color:#1e40af;">Name</th><th style="text-align:left;padding:4px 8px;background:#dbeafe;color:#1e40af;">Designation / Trade</th></tr>
-      ${data.staff.list.map((r,i)=>`<tr><td style="padding:4px 8px;border-bottom:1px solid #e0e7ff;">${i+1}</td><td style="padding:4px 8px;border-bottom:1px solid #e0e7ff;">${r.name||'—'}</td><td style="padding:4px 8px;border-bottom:1px solid #e0e7ff;">${r.desig||'—'}</td></tr>`).join('')}
+      ${data.staff.list.map((r,i)=>`<tr><td style="padding:4px 8px;border-bottom:1px solid #e0e7ff;">${i+1}</td><td style="padding:4px 8px;border-bottom:1px solid #e0e7ff;">${escHtml(r.name||'—')}</td><td style="padding:4px 8px;border-bottom:1px solid #e0e7ff;">${escHtml(r.desig||'—')}</td></tr>`).join('')}
     </table>
-    ${data.staff.remarks ? `<div style="margin-top:7px;font-size:12px;"><strong>Remarks:</strong> ${data.staff.remarks}</div>` : ''}
+    ${data.staff.remarks ? `<div style="margin-top:7px;font-size:12px;"><strong>Remarks:</strong> ${escHtml(data.staff.remarks)}</div>` : ''}
   </div>` : ''}
   <div class="summary">
     <span class="pill pill-y">${statusWord('yes')}: ${yes}</span>
@@ -1837,7 +1859,7 @@ function buildReportHTML(data) {
     <tr><th style="width:40px;">#</th><th>${uiText(getSettings().question ? 'question' : 'item')}</th><th style="width:150px;">${uiText('status')}</th><th>${uiText('remark')}</th></tr>
     ${rows}
   </table>
-  <div class="footer"><div class="sign-box">${prof.name || 'Inspector'}<br>${prof.desig || ''}</div></div>
+  <div class="footer"><div class="sign-box">${escHtml(prof.name || 'Inspector')}<br>${escHtml(prof.desig || '')}</div></div>
   </body></html>`;
 }
 
@@ -1849,6 +1871,8 @@ function resetForm() {
   Object.keys(statusMap).forEach(k => delete statusMap[k]);
   _prevTrade = '';
   _warnPending = null;
+  _lastSavedId = null;
+  setInspDateToday();
   document.getElementById('sel-district')._prevDistrict = '';
   document.getElementById('sel-iti')._prevIti = '';
   localStorage.removeItem('lastITISelection');
@@ -1866,6 +1890,37 @@ function resetForm() {
 // ================================================================
 // INSPECTOR PROFILE
 // ================================================================
+// ── Inspection date helpers (records keep the dd/mm/yyyy format) ──
+function todayISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function isoToDisplayDate(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : '';
+}
+function displayDateToISO(dmy) {
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(dmy || '');
+  return m ? `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}` : '';
+}
+function setInspDateToday() {
+  const el = document.getElementById('insp-date');
+  el.value = todayISO();
+  el.max = todayISO();
+}
+
+// Profile is kept per Google account, so a shared phone never mixes inspectors
+function profileKey() {
+  return window._fbUser ? `inspectorProfile_${window._fbUser.uid}` : 'inspectorProfile';
+}
+
+// First sign-in: if this account has no profile yet, start from the one saved before signing in
+function getProfile() {
+  const own = localStorage.getItem(profileKey());
+  if (own) return JSON.parse(own);
+  return window._fbUser ? JSON.parse(localStorage.getItem('inspectorProfile') || '{}') : {};
+}
+
 function saveProfile() {
   const prof = {
     name:   document.getElementById('prof-name').value.trim(),
@@ -1874,7 +1929,7 @@ function saveProfile() {
     phone:  document.getElementById('prof-phone').value.trim(),
     email:  document.getElementById('prof-email').value.trim()
   };
-  localStorage.setItem('inspectorProfile', JSON.stringify(prof));
+  localStorage.setItem(profileKey(), JSON.stringify(prof));
   saveProfileToCloud(prof);
   const msg = document.getElementById('prof-msg');
   msg.textContent = '✅ Profile saved successfully!';
@@ -1883,7 +1938,7 @@ function saveProfile() {
 }
 
 function loadProfile() {
-  const prof = JSON.parse(localStorage.getItem('inspectorProfile') || '{}');
+  const prof = getProfile();
   document.getElementById('prof-name').value  = prof.name   || '';
   document.getElementById('prof-desig').value = prof.desig  || '';
   document.getElementById('prof-office').value= prof.office || '';
@@ -1901,7 +1956,7 @@ function loadDefaultCustomItems() {
   items.forEach((name, i) => {
     const div = document.createElement('div');
     div.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:7px;';
-    div.innerHTML = `<span style="flex:1;font-size:13px;padding:6px 8px;background:#f3f4f6;border-radius:6px;">${name}</span>
+    div.innerHTML = `<span style="flex:1;font-size:13px;padding:6px 8px;background:#f3f4f6;border-radius:6px;">${escHtml(name)}</span>
       <button class="btn btn-danger btn-xs" onclick="removeDefaultItem(${i})">Remove</button>`;
     container.appendChild(div);
   });
@@ -1936,7 +1991,7 @@ function renderHistory() {
 
   const filtered = history.filter(r => {
     if (filterDist && r.district !== filterDist) return false;
-    if (search && !r.itiName.toLowerCase().includes(search) && !r.trade.toLowerCase().includes(search)) return false;
+    if (search && !String(r.itiName||'').toLowerCase().includes(search) && !String(r.trade||'').toLowerCase().includes(search)) return false;
     return true;
   });
 
@@ -1957,10 +2012,10 @@ function renderHistory() {
     const nu  = all.filter(x=>x.status==='nu').length;
     html += `<tr>
       <td>${i+1}</td>
-      <td>${r.date}</td>
-      <td>${r.district}</td>
-      <td style="font-size:12px;">${r.itiName}</td>
-      <td style="font-size:12px;">${r.trade}${r.shift||r.unit?'<br><span style="color:var(--muted);font-size:11px;">'+(r.shift||'')+(r.shift&&r.unit?' / ':''+(r.unit||''))+'</span>':''}</td>
+      <td>${escHtml(r.date)}${r._pending ? `<br><span style="font-size:10px;font-weight:700;color:${window._fbUser ? '#b45309' : '#6b7280'};white-space:nowrap;">${window._fbUser ? '⏳ Waiting to upload' : '📱 This phone'}</span>` : (window._fbUser ? '<br><span style="font-size:10px;color:#057a55;">☁️ Cloud</span>' : '')}</td>
+      <td>${escHtml(r.district)}</td>
+      <td style="font-size:12px;">${escHtml(r.itiName)}</td>
+      <td style="font-size:12px;">${escHtml(r.trade)}${r.shift||r.unit?'<br><span style="color:var(--muted);font-size:11px;">'+escHtml([r.shift,r.unit].filter(Boolean).join(' / '))+'</span>':''}</td>
       <td>
         <span style="color:#065f46;font-weight:700;">✅${yes}</span>
         <span style="color:#991b1b;font-weight:700;margin:0 4px;">❌${no}</span>
@@ -1997,14 +2052,14 @@ function viewRecord(id) {
 function buildViewHTML(rec) {
   const prof = rec.inspector || {};
   const shiftUnit = [rec.shift, rec.unit].filter(Boolean).join(' / ');
-  let html = `<h2>📋 ${rec.itiName}<br><small style="font-size:13px;color:var(--muted);">${rec.trade}${shiftUnit?' — '+shiftUnit:''} | ${rec.date}</small></h2>
+  let html = `<h2>📋 ${escHtml(rec.itiName)}<br><small style="font-size:13px;color:var(--muted);">${rec.trade}${shiftUnit?' — '+shiftUnit:''} | ${escHtml(rec.date)}</small></h2>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:12px;font-size:13px;">
-    <div><strong>District:</strong> ${rec.district}</div>
-    <div><strong>Code:</strong> ${rec.itiCode}</div>
-    <div><strong>Shift:</strong> ${rec.shift||'—'}</div>
-    <div><strong>Unit:</strong> ${rec.unit||'—'}</div>
-    <div><strong>Inspector:</strong> ${prof.name||'—'}</div>
-    <div><strong>Designation:</strong> ${prof.desig||'—'}</div>
+    <div><strong>District:</strong> ${escHtml(rec.district)}</div>
+    <div><strong>Code:</strong> ${escHtml(rec.itiCode)}</div>
+    <div><strong>Shift:</strong> ${escHtml(rec.shift||'—')}</div>
+    <div><strong>Unit:</strong> ${escHtml(rec.unit||'—')}</div>
+    <div><strong>Inspector:</strong> ${escHtml(prof.name||'—')}</div>
+    <div><strong>Designation:</strong> ${escHtml(prof.desig||'—')}</div>
   </div>`;
 
   // Staff block
@@ -2013,9 +2068,9 @@ function buildViewHTML(rec) {
       <div style="font-weight:700;font-size:13px;color:var(--primary-dark);margin-bottom:7px;">👥 Staff Present During Inspection</div>
       <table style="width:100%;border-collapse:collapse;font-size:12px;">
         <tr><th style="text-align:left;padding:4px 6px;background:#dbeafe;color:#1e40af;">#</th><th style="text-align:left;padding:4px 6px;background:#dbeafe;color:#1e40af;">Name</th><th style="text-align:left;padding:4px 6px;background:#dbeafe;color:#1e40af;">Designation / Trade</th></tr>
-        ${rec.staff.list.map((r,i)=>`<tr><td style="padding:4px 6px;border-bottom:1px solid #e0e7ff;">${i+1}</td><td style="padding:4px 6px;border-bottom:1px solid #e0e7ff;">${r.name||'—'}</td><td style="padding:4px 6px;border-bottom:1px solid #e0e7ff;">${r.desig||'—'}</td></tr>`).join('')}
+        ${rec.staff.list.map((r,i)=>`<tr><td style="padding:4px 6px;border-bottom:1px solid #e0e7ff;">${i+1}</td><td style="padding:4px 6px;border-bottom:1px solid #e0e7ff;">${escHtml(r.name||'—')}</td><td style="padding:4px 6px;border-bottom:1px solid #e0e7ff;">${escHtml(r.desig||'—')}</td></tr>`).join('')}
       </table>
-      ${rec.staff.remarks ? `<div style="margin-top:6px;font-size:12px;"><strong>Remarks:</strong> ${rec.staff.remarks}</div>` : ''}
+      ${rec.staff.remarks ? `<div style="margin-top:6px;font-size:12px;"><strong>Remarks:</strong> ${escHtml(rec.staff.remarks)}</div>` : ''}
     </div>`;
   }
 
@@ -2034,7 +2089,7 @@ function buildViewHTML(rec) {
         <span style="font-size:12px;">${i+1}. ${escHtml(itemText(item))}</span>
         <span style="font-size:12px;font-weight:700;">${sl}</span>
       </div>`;
-      if (item.remark) html += `<div style="font-size:11px;color:var(--muted);padding:0 8px 5px;">↳ ${item.remark}</div>`;
+      if (item.remark) html += `<div style="font-size:11px;color:var(--muted);padding:0 8px 5px;">↳ ${escHtml(item.remark)}</div>`;
     });
   });
   return html;
@@ -2047,7 +2102,9 @@ function editRecord(id) {
   editingId = id;
 
   const s = rec.staff || {};
-  let html = `<div style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--primary-dark);">${rec.itiName} — ${rec.trade}<br><small style="font-size:12px;color:var(--muted);">${rec.district} | ${rec.date}</small></div>
+  let html = `<div style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--primary-dark);">${escHtml(rec.itiName)} — ${escHtml(rec.trade)}<br><small style="font-size:12px;color:var(--muted);">${escHtml(rec.district)} | ${escHtml(rec.date)}</small></div>
+  <label style="font-size:12px;font-weight:600;color:var(--muted);">Inspection Date</label>
+  <input type="date" id="edit-date" value="${escHtml(displayDateToISO(rec.date))}" max="${todayISO()}" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;margin-bottom:8px;">
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
     <div>
       <label style="font-size:12px;font-weight:600;color:var(--muted);">Shift</label>
@@ -2073,7 +2130,7 @@ function editRecord(id) {
     <div id="edit-staff-list">
       ${(s.list&&s.list.length?s.list:[{name:'',desig:''}]).map((r,i)=>`
       <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:6px;align-items:center;margin-bottom:7px;">
-        <input type="text" id="edit-sname-${i}" value="${r.name||''}" placeholder="" style="padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;">
+        <input type="text" id="edit-sname-${i}" value="${escHtml(r.name||'')}" placeholder="" style="padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;">
         <select id="edit-sdesig-${i}" onchange="syncEditDesig(${i})" style="padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;">
           <option value="">-- Designation --</option>
           <option value="Senior Instructor"  ${r.desig==='Senior Instructor'?'selected':''}>Senior Instructor</option>
@@ -2083,12 +2140,12 @@ function editRecord(id) {
         </select>
         <button onclick="removeEditStaff(${i})" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:15px;">🗑</button>
       </div>
-      ${r.desig&&!['Senior Instructor','Junior Instructor','Workshop Attendant',''].includes(r.desig)?`<input type="text" id="edit-sdesig-other-${i}" value="${r.desig}" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;margin-bottom:7px;">`:``}
+      ${r.desig&&!['Senior Instructor','Junior Instructor','Workshop Attendant',''].includes(r.desig)?`<input type="text" id="edit-sdesig-other-${i}" value="${escHtml(r.desig)}" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;margin-bottom:7px;">`:``}
       `).join('')}
     </div>
     <button onclick="addEditStaff()" style="background:#fff;border:1.5px solid var(--primary);color:var(--primary);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;margin-bottom:8px;">+ Add Staff</button>
     <label style="font-size:12px;font-weight:600;color:var(--muted);">Remarks</label>
-    <textarea id="edit-staff-remarks" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;resize:vertical;">${s.remarks||''}</textarea>
+    <textarea id="edit-staff-remarks" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;resize:vertical;">${escHtml(s.remarks||'')}</textarea>
   </div>`;
 
   const sections = [
@@ -2107,7 +2164,7 @@ function editRecord(id) {
           <button onclick="editToggle(this,'${sec.key}',${i},'no')"  style="padding:4px 10px;border:1.5px solid #d1d5db;border-radius:14px;cursor:pointer;font-size:11px;font-weight:700;background:${item.status==='no'?'#fee2e2':'#f9fafb'};color:${item.status==='no'?'#991b1b':'#6b7280'};">❌ No</button>
           <button onclick="editToggle(this,'${sec.key}',${i},'nu')"  style="padding:4px 10px;border:1.5px solid #d1d5db;border-radius:14px;cursor:pointer;font-size:11px;font-weight:700;background:${item.status==='nu'?'#fef3c7':'#f9fafb'};color:${item.status==='nu'?'#92400e':'#6b7280'};">⚠️ N/U</button>
         </div>
-        <input type="text" id="edit-remark-${sec.key}-${i}" value="${item.remark||''}" placeholder="" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;">
+        <input type="text" id="edit-remark-${sec.key}-${i}" value="${escHtml(item.remark||'')}" placeholder="" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;">
       </div>`;
     });
   });
@@ -2143,6 +2200,8 @@ function saveEditModal() {
   // Collect shift / unit
   window._editData.shift = document.getElementById('edit-shift')?.value || '';
   window._editData.unit  = document.getElementById('edit-unit')?.value  || '';
+  const ed = isoToDisplayDate(document.getElementById('edit-date')?.value);
+  if (ed) window._editData.date = ed;
 
   // Collect staff list from edit modal
   const editStaffList = [];
@@ -2170,27 +2229,19 @@ function saveEditModal() {
     });
   });
 
-  const updatedRecord = { ...(getHistory().find(r => r.id === editingId) || {}), ...window._editData };
+  const updatedRecord = JSON.parse(JSON.stringify({ ...(getHistory().find(r => r.id === editingId) || {}), ...window._editData }));
+  delete updatedRecord._pending;
+  if (currentUid()) updatedRecord._owner = currentUid(); else delete updatedRecord._owner;
 
-  if (window._fbUser) {
-    saveInspectionToCloud(updatedRecord).then(() => {
-      const idx = _cloudHistory.findIndex(r => r.id === editingId);
-      if (idx !== -1) _cloudHistory[idx] = updatedRecord;
-      closeModal();
-      renderHistory();
-      alert('✅ Inspection updated in cloud!');
-    });
-  } else {
-    const history = JSON.parse(localStorage.getItem('inspectionHistory') || '[]');
-    const idx = history.findIndex(r => r.id === editingId);
-    if (idx !== -1) {
-      history[idx] = updatedRecord;
-      localStorage.setItem('inspectionHistory', JSON.stringify(history));
-    }
-    closeModal();
-    renderHistory();
-    alert('✅ Inspection updated!');
-  }
+  // Save the edit on the phone first; it uploads (replacing the cloud copy) when online
+  const local = getLocalHistory();
+  const idx = local.findIndex(r => r.id === editingId);
+  if (idx !== -1) local[idx] = updatedRecord; else local.unshift(updatedRecord);
+  setLocalHistory(local);
+  closeModal();
+  renderHistory();
+  alert('✅ Inspection updated.' + (window._fbUser ? (navigator.onLine ? '' : '\nIt will upload when internet returns.') : ''));
+  syncPendingInspections();
 }
 
 function printRecord(id) {
@@ -2201,23 +2252,24 @@ function printRecord(id) {
 
 async function deleteRecord(id) {
   if (!confirm('Delete this inspection record?')) return;
-  if (window._fbUser) {
-    await deleteInspectionFromCloud(id);
+  const inCloud = window._fbUser && _cloudHistory.some(r => r.id === id);
+  if (inCloud) {
+    const ok = await deleteInspectionFromCloud(id);
+    if (!ok) { alert('❌ Could not delete from the cloud — no internet.\nPlease try again when you are online.'); return; }
     _cloudHistory = _cloudHistory.filter(r => r.id !== id);
-  } else {
-    let history = JSON.parse(localStorage.getItem('inspectionHistory') || '[]');
-    history = history.filter(r => r.id !== id);
-    localStorage.setItem('inspectionHistory', JSON.stringify(history));
   }
+  setLocalHistory(getLocalHistory().filter(r => r.id !== id));
   closeModal();
   renderHistory();
+  updateSyncStatus();
 }
 
 function exportHistory() {
   const history = getHistory();
   if (!history.length) { alert('No inspection history to export.'); return; }
-  const profile = JSON.parse(localStorage.getItem('inspectorProfile') || '{}');
-  const data = { exportedAt: new Date().toISOString(), profile, history };
+  const profile = getProfile();
+  const clean = history.map(r => { const c = { ...r }; delete c._pending; delete c._owner; return c; });
+  const data = { exportedAt: new Date().toISOString(), profile, history: clean };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -2240,16 +2292,20 @@ function importHistory(event) {
       if (!incoming.length) { alert('No records found in this file.'); return; }
       const existing = JSON.parse(localStorage.getItem('inspectionHistory') || '[]');
       // Merge: skip duplicates by id
-      const existingIds = new Set(existing.map(r => r.id));
-      const newRecords = incoming.filter(r => !existingIds.has(r.id));
+      // Give any record with a missing/unsafe id a fresh one
+      incoming.forEach((r, k) => { if (!r || typeof r !== 'object') return; if (!/^[\w-]{1,40}$/.test(String(r.id || ''))) r.id = String(Date.now() + k); });
+      const existingIds = new Set([...existing.map(r => r.id), ..._cloudHistory.map(r => r.id)]);
+      const newRecords = incoming.filter(r => !existingIds.has(r.id))
+        .map(r => { const c = { ...r }; delete c._pending; delete c._owner; if (currentUid()) c._owner = currentUid(); return c; });
       const merged = [...existing, ...newRecords];
       localStorage.setItem('inspectionHistory', JSON.stringify(merged));
       // Optionally restore profile if not set
-      if (data.profile && !localStorage.getItem('inspectorProfile')) {
-        localStorage.setItem('inspectorProfile', JSON.stringify(data.profile));
+      if (data.profile && !localStorage.getItem(profileKey())) {
+        localStorage.setItem(profileKey(), JSON.stringify(data.profile));
         loadProfile();
       }
       renderHistory();
+      syncPendingInspections();
       alert(`✅ Import complete.\n${newRecords.length} new record(s) added.\n${incoming.length - newRecords.length} duplicate(s) skipped.`);
     } catch(err) {
       alert('❌ Invalid JSON file. Please use a file exported from this app.');
@@ -2266,16 +2322,19 @@ async function clearAllHistory() {
     alert('❌ Not deleted. You must type DELETE exactly to confirm.');
     return;
   }
-  if (window._fbUser) {
-    // Delete all from Firestore
+  let failed = 0;
+  if (window._fbUser && _cloudHistory.length) {
     const ids = _cloudHistory.map(r => r.id);
-    await Promise.all(ids.map(id => deleteInspectionFromCloud(id)));
-    _cloudHistory = [];
-  } else {
-    localStorage.removeItem('inspectionHistory');
+    const res = await Promise.all(ids.map(id => deleteInspectionFromCloud(id)));
+    _cloudHistory = _cloudHistory.filter((r, i) => !res[i]);
+    failed = res.filter(ok => !ok).length;
   }
+  const mine = new Set(myPendingRecords().map(r => r.id));
+  setLocalHistory(getLocalHistory().filter(r => !mine.has(r.id)));
   renderHistory();
-  alert('✅ All inspection history cleared.');
+  updateSyncStatus();
+  alert(failed ? `⚠️ ${failed} cloud record(s) could not be deleted — no internet. Try again when online.`
+               : '✅ All inspection history cleared.');
 }
 
 // ================================================================
@@ -2286,15 +2345,38 @@ async function clearAllHistory() {
 let _cloudHistory = [];
 
 // If Firebase can't load (no internet / blocked), don't leave the banner stuck
-setTimeout(() => {
+function showOfflineBanner() {
   if (window._fb) return;
   const st = document.getElementById('auth-status');
-  if (st) st.textContent = '📴 Offline — cloud unavailable. Inspections are saved on this device.';
+  if (st) st.textContent = '📴 Offline — inspections are saved on this phone and will upload when internet returns.';
   const bi = document.getElementById('btn-signin'); if (bi) bi.style.display = 'none';
   const bo = document.getElementById('btn-signout'); if (bo) bo.style.display = 'none';
-}, 8000);
+  const br = document.getElementById('btn-reconnect'); if (br) br.style.display = '';
+}
+window.showOfflineBanner = showOfflineBanner;
+
+// Keep a copy of the app on the phone so it opens without internet (needs sw.js next to this file)
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(e => console.warn('SW not registered', e)));
+}
+
+// Internet came back after the app was opened offline
+function onInternetBack() {
+  if (window._fb) return;
+  if (hasUnsavedMarks()) {
+    // Marks in progress: don't reload under the inspector — the draft is safe; let them tap Reconnect
+    const st = document.getElementById('auth-status');
+    if (st) st.textContent = '📶 Internet is back — tap Reconnect to upload saved inspections. (Your current marks are kept as a draft.)';
+    const br = document.getElementById('btn-reconnect'); if (br) br.style.display = '';
+  } else {
+    location.reload();
+  }
+}
+window.onInternetBack = onInternetBack;
+setTimeout(showOfflineBanner, 8000);
 
 function updateAuthUI(user) {
+  updateSyncStatus();
   applySettingsToChecklist();
   loadSettingsUI();
   const statusEl = document.getElementById('auth-status');
@@ -2322,6 +2404,10 @@ function fbSignOut() {
   if (!window._fb) return;
   window._fb.signOut(window._fb.auth);
   _cloudHistory = [];
+  window._fbUser = null;
+  localStorage.removeItem('lastUid');
+  _askedUnowned = false;
+  loadProfile();
   renderHistory();
 }
 
@@ -2339,7 +2425,7 @@ async function loadProfileFromCloud() {
       document.getElementById('prof-office').value= prof.office || '';
       document.getElementById('prof-phone').value = prof.phone  || '';
       document.getElementById('prof-email').value = prof.email  || '';
-      localStorage.setItem('inspectorProfile', JSON.stringify(prof));
+      localStorage.setItem(profileKey(), JSON.stringify(prof));
     } else { loadProfile(); }
   } catch(e) { loadProfile(); }
 }
@@ -2357,9 +2443,8 @@ async function loadHistoryFromCloud() {
   if (!window._fbUser || !window._fb) { renderHistory(); return; }
   try {
     const { db, collection, getDocs, query, orderBy } = window._fb;
-    const q = query(collection(db, 'users', window._fbUser.uid, 'inspections'), orderBy('savedAt', 'desc'));
-    const snap = await getDocs(q);
-    _cloudHistory = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const snap = await withTimeout(getDocs(collection(db, 'users', window._fbUser.uid, 'inspections')), 20000);
+    _cloudHistory = sortNewestFirst(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     renderHistory();
   } catch(e) {
     console.warn('Cloud history load failed', e);
@@ -2377,18 +2462,116 @@ async function saveInspectionToCloud(record) {
 }
 
 async function deleteInspectionFromCloud(id) {
-  if (!window._fbUser || !window._fb) return;
+  if (!window._fbUser || !window._fb || !navigator.onLine) return false;
   try {
     const { db, doc, deleteDoc } = window._fb;
-    await deleteDoc(doc(db, 'users', window._fbUser.uid, 'inspections', id));
-  } catch(e) { console.warn('Cloud delete failed', e); }
+    await withTimeout(deleteDoc(doc(db, 'users', window._fbUser.uid, 'inspections', id)), 15000);
+    return true;
+  } catch(e) { console.warn('Cloud delete failed', e); return false; }
 }
 
 // ---- GETHISTORY helper (cloud-aware) ----
-function getHistory() {
-  if (window._fbUser) return _cloudHistory;
+// ================================================================
+// OFFLINE-FIRST SAVING
+// Every inspection is saved on the phone first ("inspectionHistory").
+// When signed in and online, those records are uploaded and then removed
+// from the phone list. Records still on the phone show "Waiting to upload".
+// ================================================================
+function getLocalHistory() {
   return JSON.parse(localStorage.getItem('inspectionHistory') || '[]');
 }
+function setLocalHistory(list) {
+  localStorage.setItem('inspectionHistory', JSON.stringify(list));
+}
+function sortNewestFirst(list) {
+  return list.sort((a, b) => (parseInt(b.id) || 0) - (parseInt(a.id) || 0));
+}
+
+// Phone records belong to: the account that saved them (_owner), or nobody yet
+// (saved without signing in). Records of another account stay hidden and wait for that account.
+// Whose records these are right now. If the app was opened offline, Firebase isn't loaded yet,
+// so assume the account that was last signed in on this phone (it never signed out).
+function currentUid() {
+  if (window._fbUser) return window._fbUser.uid;
+  if (!window._fb) return localStorage.getItem('lastUid') || null;
+  return null;
+}
+function myPendingRecords() {
+  const uid = currentUid();
+  return getLocalHistory().filter(r => uid ? r._owner === uid : !r._owner);
+}
+function unownedRecords() {
+  return getLocalHistory().filter(r => !r._owner);
+}
+
+function getHistory() {
+  const local = myPendingRecords().map(r => ({ ...r, _pending: true }));
+  if (!window._fbUser) return sortNewestFirst(local);
+  const localIds = new Set(local.map(r => r.id));
+  return sortNewestFirst([...local, ..._cloudHistory.filter(r => !localIds.has(r.id))]);
+}
+
+// After sign-in: ask before moving records saved without an account into this account
+let _askedUnowned = false;
+function offerUnownedUpload() {
+  if (!window._fbUser || _askedUnowned) return;
+  const n = unownedRecords().length;
+  if (!n) return;
+  _askedUnowned = true;
+  const who = window._fbUser.displayName || window._fbUser.email || 'this account';
+  const ok = confirm(`📱 ${n} inspection(s) on this phone were saved without signing in.\n\nUpload them to ${who}?\n\nOK = Upload to this account\nCancel = Keep them on this phone only`);
+  if (!ok) return;
+  const uid = window._fbUser.uid;
+  setLocalHistory(getLocalHistory().map(r => r._owner ? r : { ...r, _owner: uid }));
+  renderHistory();
+  syncPendingInspections();
+}
+
+function withTimeout(promise, ms) {
+  return Promise.race([promise, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
+}
+
+let _syncing = false;
+async function syncPendingInspections() {
+  updateSyncStatus();
+  if (_syncing || !window._fbUser || !window._fb || !navigator.onLine) return;
+  const pending = myPendingRecords();
+  if (!pending.length) return;
+  _syncing = true;
+  updateSyncStatus();
+  const { db, doc, setDoc } = window._fb;
+  const uid = window._fbUser.uid;
+  for (const rec of pending) {
+    if (!window._fbUser || window._fbUser.uid !== uid) break;   // user changed mid-sync
+    try {
+      const clean = JSON.parse(JSON.stringify(rec));           // drops undefined fields
+      delete clean._pending;
+      delete clean._owner;
+      await withTimeout(setDoc(doc(db, 'users', uid, 'inspections', rec.id), clean), 20000);
+      setLocalHistory(getLocalHistory().filter(r => r.id !== rec.id));
+      const i = _cloudHistory.findIndex(r => r.id === rec.id);
+      if (i === -1) _cloudHistory.push(clean); else _cloudHistory[i] = clean;
+    } catch (e) {
+      console.warn('Upload failed, will retry', e);
+      break;                                                   // probably offline — try again later
+    }
+  }
+  _syncing = false;
+  updateSyncStatus();
+  renderHistory();
+}
+
+function updateSyncStatus() {
+  const el = document.getElementById('sync-status');
+  if (!el) return;
+  const n = window._fbUser ? myPendingRecords().length : 0;
+  if (!n) { el.textContent = ''; el.style.display = 'none'; return; }
+  el.style.display = '';
+  el.textContent = _syncing ? `⏫ Uploading ${n}…` : `⏳ ${n} waiting to upload`;
+}
+
+window.addEventListener('online', () => setTimeout(syncPendingInspections, 3000));
+setInterval(() => { if (window._fbUser && myPendingRecords().length) syncPendingInspections(); }, 60000);
 
 // ================================================================
 // MODALS
