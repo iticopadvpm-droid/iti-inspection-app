@@ -376,7 +376,7 @@ textarea { resize: vertical; min-height: 60px; }
 
       <!-- Section A: NSQF Documents -->
       <div class="section-hdr">
-        <h3>📄 Section A — NSQF Documents (14)</h3>
+        <h3>📄 Section A — NSQF Documents</h3>
       </div>
       <div id="nsqf-items"></div>
 
@@ -636,7 +636,7 @@ const ITI_DATA = {
 };
 
 // NSQF 14 Documents
-const NSQF_DOCS = [
+const NSQF_DOCS_DEFAULT = [
   "Lesson Plan","Demonstration Plan","Information Sheet","Job Sheet",
   "Annexure II","Annexure III","Trainer's Observation & Evidence Report",
   "On Job Training Register","Split-up Syllabus – Skill",
@@ -644,16 +644,43 @@ const NSQF_DOCS = [
   "Program of Coaching – Theory WCS ED & ES","Project Planning Register","Progress Card"
 ];
 
-// Default Registers & Safety
-const DEFAULT_REG = [
-  "Stock Register","Consumable Register",
-  "Fire Extinguisher – Availability","Fire Extinguisher – Condition"
+// Default Registers & Safety (from official Inspector circular)
+const DEFAULT_REG_DEFAULTS = [
+  // Trainee Records
+  "Trainees' Log Book / Diary / Notes",
+  "Trainees' Progress Card",
+  "Trainees' Attendance Register",
+  "Trainees' Caution / Security Deposit",
+  // Equipment & Materials
+  "Availability of Training Materials",
+  "Machinery Maintenance Records",
+  "Condemned Equipment – Records",
+  "Condemned Equipment – Auction",
+  "Metal Scrap Auction",
+  "Use of Revamped Equipment",
+  "Stock Register",
+  "Consumable Register",
+  // Facilities & Infrastructure
+  "Drinking Water Availability for Trainees",
+  "Campus Cleanliness",
+  "Building Maintenance",
+  "Vehicle Log Book",
+  "Fire Extinguisher – Availability",
+  "Fire Extinguisher – Condition",
+  // Administration
+  "PTA / IMC Meeting Records",
+  "Staff Duty Punctuality",
+  "Group Instructor / Principal Trade Visit",
+  "Skill Karma Sena Activities",
+  "ATI without Land / Building – Status"
 ];
 
 // ================================================================
 // STATE
 // ================================================================
-let customItems = [];   // items in current checklist
+let nsqfItems  = [];    // mutable copy of NSQF docs for current checklist
+let regItems   = [];    // mutable copy of Registers & Safety items
+let customItems = [];   // additional items for current checklist
 let editingId = null;   // inspection id being edited
 
 // ================================================================
@@ -1077,9 +1104,11 @@ function loadChecklist() {
   document.getElementById('sel-unit').onchange  = updateChkTitle;
   document.getElementById('checklist-card').style.display = 'block';
 
-  // Load default custom items from profile settings
+  // Initialise mutable item lists (fresh copy from defaults each time)
+  nsqfItems  = NSQF_DOCS_DEFAULT.map(n => ({ name: n }));
+  regItems   = DEFAULT_REG_DEFAULTS.map(n => ({ name: n }));
   const saved = JSON.parse(localStorage.getItem('defaultCustomItems') || '[]');
-  customItems = saved.map(n => ({ name: n, status: '', remark: '' }));
+  customItems = saved.map(n => ({ name: n }));
 
   // Show staff card and clear fields
   document.getElementById('staff-card').style.display = 'block';
@@ -1097,16 +1126,16 @@ function loadChecklist() {
 function renderNSQF() {
   const container = document.getElementById('nsqf-items');
   container.innerHTML = '';
-  NSQF_DOCS.forEach((doc, i) => {
-    container.appendChild(createCheckRow('nsqf', i, doc));
+  nsqfItems.forEach((item, i) => {
+    container.appendChild(createCheckRow('nsqf', i, item.name));
   });
 }
 
 function renderRegItems() {
   const container = document.getElementById('reg-items');
   container.innerHTML = '';
-  DEFAULT_REG.forEach((r, i) => {
-    container.appendChild(createCheckRow('reg', i, r));
+  regItems.forEach((item, i) => {
+    container.appendChild(createCheckRow('reg', i, item.name));
   });
 }
 
@@ -1114,12 +1143,12 @@ function renderCustomItems() {
   const container = document.getElementById('custom-items');
   container.innerHTML = '';
   customItems.forEach((item, i) => {
-    container.appendChild(createCheckRow('custom', i, item.name, true));
+    container.appendChild(createCheckRow('custom', i, item.name));
   });
   document.getElementById('custom-count').textContent = customItems.length;
 }
 
-function createCheckRow(section, idx, name, deletable = false) {
+function createCheckRow(section, idx, name) {
   const div = document.createElement('div');
   div.className = 'chk-row';
   div.id = `row-${section}-${idx}`;
@@ -1127,19 +1156,70 @@ function createCheckRow(section, idx, name, deletable = false) {
   const status = getStatus(section, idx);
   div.innerHTML = `
     <div class="chk-top">
-      <span class="chk-name">${idx + 1}. ${name}</span>
+      <span class="chk-name" id="label-${section}-${idx}">${idx + 1}. ${name}</span>
       <div class="status-toggle">
         <button onclick="setStatus('${section}',${idx},'yes')" class="${status==='yes'?'sel-yes':''}">✅ Yes</button>
         <button onclick="setStatus('${section}',${idx},'no')"  class="${status==='no'?'sel-no':''}">❌ No</button>
         <button onclick="setStatus('${section}',${idx},'nu')"  class="${status==='nu'?'sel-nu':''}">⚠️ N/U</button>
       </div>
-      ${deletable ? `<button class="chk-delete no-print" title="Remove item" onclick="removeCustom(${idx})">🗑</button>` : ''}
+      <div class="no-print" style="display:flex;gap:4px;flex-shrink:0;">
+        <button class="chk-delete" title="Edit item name" onclick="editItemName('${section}',${idx})" style="background:#e0f2fe;color:#0369a1;">✏️</button>
+        <button class="chk-delete" title="Remove item" onclick="removeItem('${section}',${idx})">🗑</button>
+      </div>
     </div>
     <div class="chk-remark">
       <input type="text" placeholder="" id="remark-${section}-${idx}" value="${getRemark(section,idx)}" oninput="updateSummary();saveDraft()">
     </div>
   `;
   return div;
+}
+
+function getItemList(section) {
+  if (section === 'nsqf')   return nsqfItems;
+  if (section === 'reg')    return regItems;
+  if (section === 'custom') return customItems;
+}
+
+function renderSection(section) {
+  if (section === 'nsqf')   renderNSQF();
+  if (section === 'reg')    renderRegItems();
+  if (section === 'custom') renderCustomItems();
+}
+
+function editItemName(section, idx) {
+  const list = getItemList(section);
+  const current = list[idx].name;
+  const label = document.getElementById(`label-${section}-${idx}`);
+  // Replace label with inline input
+  label.outerHTML = `<input type="text" id="edit-input-${section}-${idx}"
+    style="flex:1;font-size:13px;padding:4px 6px;border:1.5px solid #1a56db;border-radius:6px;"
+    value="${current.replace(/"/g,'&quot;')}"
+    onblur="saveItemName('${section}',${idx},this.value)"
+    onkeydown="if(event.key==='Enter')this.blur();if(event.key==='Escape'){this.value='${current.replace(/'/g,"\\'")}';this.blur();}"
+  >`;
+  const inp = document.getElementById(`edit-input-${section}-${idx}`);
+  inp.focus(); inp.select();
+}
+
+function saveItemName(section, idx, val) {
+  const list = getItemList(section);
+  val = val.trim();
+  if (val) list[idx].name = val;
+  renderSection(section);
+  updateSummary();
+}
+
+function removeItem(section, idx) {
+  const list = getItemList(section);
+  list.splice(idx, 1);
+  // Shift statusMap keys down
+  for (let i = idx; i <= list.length; i++) {
+    const next = statusMap[`${section}-${i+1}`];
+    if (next) statusMap[`${section}-${i}`] = next;
+    else delete statusMap[`${section}-${i}`];
+  }
+  renderSection(section);
+  updateSummary();
 }
 
 // ================================================================
@@ -1181,11 +1261,11 @@ function saveDraft() {
 
   // Collect remarks too
   const nsqfRemarks = {}, regRemarks = {}, customRemarks = {};
-  NSQF_DOCS.forEach((_, i) => {
+  nsqfItems.forEach((_, i) => {
     const el = document.getElementById(`remark-nsqf-${i}`);
     if (el && el.value) nsqfRemarks[i] = el.value;
   });
-  DEFAULT_REG.forEach((_, i) => {
+  regItems.forEach((_, i) => {
     const el = document.getElementById(`remark-reg-${i}`);
     if (el && el.value) regRemarks[i] = el.value;
   });
@@ -1194,6 +1274,8 @@ function saveDraft() {
     district, itiIdx, itiName: iti.name, trade, shift, unit,
     statusMap: JSON.parse(JSON.stringify(statusMap)),
     nsqfRemarks, regRemarks,
+    nsqfItems:  nsqfItems.map(c => c.name),
+    regItems:   regItems.map(c => c.name),
     customItems: customItems.map(c => c.name),
     savedAt: new Date().toISOString()
   };
@@ -1249,10 +1331,10 @@ function resumeDraft() {
     document.getElementById('sel-shift').value = draft.shift || '';
     document.getElementById('sel-unit').value  = draft.unit  || '';
 
-    // Restore custom items
-    if (draft.customItems && draft.customItems.length) {
-      customItems = draft.customItems.map(name => ({ name }));
-    }
+    // Restore item lists (with any edits/deletions from the draft)
+    if (draft.nsqfItems  && draft.nsqfItems.length)   nsqfItems  = draft.nsqfItems.map(n => ({ name: n }));
+    if (draft.regItems   && draft.regItems.length)    regItems   = draft.regItems.map(n => ({ name: n }));
+    if (draft.customItems && draft.customItems.length) customItems = draft.customItems.map(n => ({ name: n }));
 
     // Load checklist UI
     loadChecklist();
@@ -1262,15 +1344,15 @@ function resumeDraft() {
       Object.assign(statusMap, draft.statusMap);
 
       // Re-render toggle buttons
-      NSQF_DOCS.forEach((_, i) => {
+      nsqfItems.forEach((_, i) => {
         const s = getStatus('nsqf', i);
         if (s) { const row = document.getElementById(`row-nsqf-${i}`); if (row) { row.querySelectorAll('.status-toggle button').forEach(b => b.className=''); const btns=row.querySelectorAll('.status-toggle button'); ['yes','no','nu'].forEach((v,j)=>{ if(v===s) btns[j].className=`sel-${s}`; }); } }
-        if (draft.nsqfRemarks[i]) { const el=document.getElementById(`remark-nsqf-${i}`); if(el) el.value=draft.nsqfRemarks[i]; }
+        if (draft.nsqfRemarks && draft.nsqfRemarks[i]) { const el=document.getElementById(`remark-nsqf-${i}`); if(el) el.value=draft.nsqfRemarks[i]; }
       });
-      DEFAULT_REG.forEach((_, i) => {
+      regItems.forEach((_, i) => {
         const s = getStatus('reg', i);
         if (s) { const row = document.getElementById(`row-reg-${i}`); if (row) { row.querySelectorAll('.status-toggle button').forEach(b => b.className=''); const btns=row.querySelectorAll('.status-toggle button'); ['yes','no','nu'].forEach((v,j)=>{ if(v===s) btns[j].className=`sel-${s}`; }); } }
-        if (draft.regRemarks[i]) { const el=document.getElementById(`remark-reg-${i}`); if(el) el.value=draft.regRemarks[i]; }
+        if (draft.regRemarks && draft.regRemarks[i]) { const el=document.getElementById(`remark-reg-${i}`); if(el) el.value=draft.regRemarks[i]; }
       });
       updateSummary();
       hideDraftBanner();
@@ -1291,12 +1373,12 @@ function checkDraftOnLoad() {
 function updateSummary() {
   let yes=0, no=0, nu=0;
   // Count NSQF
-  NSQF_DOCS.forEach((_, i) => {
+  nsqfItems.forEach((_, i) => {
     const s = getStatus('nsqf', i);
     if (s==='yes') yes++; else if (s==='no') no++; else if (s==='nu') nu++;
   });
   // Count Reg
-  DEFAULT_REG.forEach((_, i) => {
+  regItems.forEach((_, i) => {
     const s = getStatus('reg', i);
     if (s==='yes') yes++; else if (s==='no') no++; else if (s==='nu') nu++;
   });
@@ -1305,7 +1387,7 @@ function updateSummary() {
     const s = getStatus('custom', i);
     if (s==='yes') yes++; else if (s==='no') no++; else if (s==='nu') nu++;
   });
-  const tot = NSQF_DOCS.length + DEFAULT_REG.length + customItems.length;
+  const tot = nsqfItems.length + regItems.length + customItems.length;
   document.getElementById('cnt-yes').textContent = yes;
   document.getElementById('cnt-no').textContent  = no;
   document.getElementById('cnt-nu').textContent  = nu;
@@ -1319,21 +1401,13 @@ function addCustomItem() {
   const inp = document.getElementById('new-item-name');
   const name = inp.value.trim();
   if (!name) return;
-  customItems.push({ name, status: '', remark: '' });
+  customItems.push({ name });
   inp.value = '';
   renderCustomItems();
   updateSummary();
 }
 
-function removeCustom(idx) {
-  customItems.splice(idx, 1);
-  // Clear statusMap for custom items above idx
-  for (let i = idx; i <= customItems.length; i++) {
-    delete statusMap[`custom-${i}`];
-  }
-  renderCustomItems();
-  updateSummary();
-}
+function removeCustom(idx) { removeItem('custom', idx); }
 
 // ================================================================
 // COLLECT ALL DATA FROM FORM
@@ -1353,13 +1427,13 @@ function collectInspectionData() {
 
   const staff = getStaffData();
 
-  const nsqf = NSQF_DOCS.map((name, i) => ({
-    name,
+  const nsqf = nsqfItems.map((item, i) => ({
+    name: item.name,
     status: getStatus('nsqf', i) || (document.getElementById(`remark-nsqf-${i}`)?.value ? 'nu' : ''),
     remark: document.getElementById(`remark-nsqf-${i}`)?.value || ''
   }));
-  const reg = DEFAULT_REG.map((name, i) => ({
-    name,
+  const reg = regItems.map((item, i) => ({
+    name: item.name,
     status: getStatus('reg', i) || '',
     remark: document.getElementById(`remark-reg-${i}`)?.value || ''
   }));
