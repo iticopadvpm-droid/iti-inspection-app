@@ -197,6 +197,9 @@
     margin-top: 10px;
   }
 
+  .tbl { width:100%; border-collapse:collapse; font-size:13px; margin:8px 0 12px; }
+  .tbl th, .tbl td { border:1px solid #e5e7eb; padding:7px 9px; text-align:left; vertical-align:top; }
+  .tbl th { background:#f3f4f6; }
   @media (max-width: 480px) {
     .user-cards { grid-template-columns: 1fr; }
     header h1 { font-size: 18px; }
@@ -229,7 +232,7 @@
       <div class="step-num">1</div>
       <div class="step-text">
         <strong>App link തുറക്കുക</strong>
-        <span>മുകളിൽ കൊടുത്ത link browser-ൽ type ചെയ്ത് open ചെയ്യുക.</span>
+        <span>മുകളിൽ കൊടുത്ത link browser-ൽ open ചെയ്യുക.</span>
       </div>
     </div>
     <div class="step">
@@ -248,6 +251,9 @@
     </div>
     <div class="note note-green">
       ✅ Sign in ചെയ്ത ശേഷം top bar-ൽ <strong>"☁️ Signed in as [your name]"</strong> എന്ന് കാണും.
+    </div>
+    <div class="note" style="margin-top:10px;">
+      📴 Internet ഇല്ലെങ്കിൽ top bar-ൽ <strong>"Offline — cloud unavailable"</strong> എന്ന് കാണും. അപ്പോൾ inspection ആ phone-ൽ മാത്രം save ആകും.
     </div>
   </div>
 
@@ -304,6 +310,9 @@
         <span>ITI select ചെയ്ത ശേഷം Trade list വരും. Trade select ചെയ്ത ശേഷം Shift (Shift 1 / Shift 2) ഉം Unit (I/II/III/IV) ഉം select ചെയ്യുക.</span>
       </div>
     </div>
+    <div class="note note-blue">
+      📍 App വീണ്ടും തുറക്കുമ്പോൾ <strong>അവസാനം select ചെയ്ത District-ഉം ITI-യും</strong> automatically വരും. Trade മാത്രം select ചെയ്താൽ മതി — ഒരേ ITI-യിലെ അടുത്ത trade inspect ചെയ്യാൻ എളുപ്പം.
+    </div>
 
     <h3>Step 2 — Staff Details Enter ചെയ്യുക</h3>
     <div class="step">
@@ -315,19 +324,51 @@
     </div>
 
     <h3>Step 3 — Checklist Mark ചെയ്യുക</h3>
+    <p style="margin-bottom:10px;">Checklist-ൽ 3 sections ഉണ്ട്:</p>
+    <table class="tbl">
+      <tr><th>Section</th><th>എന്താണ്</th></tr>
+      <tr><td><strong>A — NSQF Documents</strong></td><td>Lesson Plan, Demo Plan, Annexure II/III, Split-up Syllabus, Progress Card തുടങ്ങി 14 documents</td></tr>
+      <tr><td><strong>B — Registers &amp; Safety</strong></td><td>Directorate of Training-ന്റെ circular (DT/1422/2026-F3, 18-05-2026) പ്രകാരമുള്ള 23 items — trainee records, equipment, condemnation &amp; auction, drinking water, cleanliness, building, vehicle log book, fire extinguisher, PTA/IMC, staff punctuality, trade visit, Nypunya Karmasena തുടങ്ങിയവ</td></tr>
+      <tr><td><strong>C — Additional Items</strong></td><td>List-ൽ ഇല്ലാത്ത items ഇവിടെ "+ Add" ചെയ്യാം</td></tr>
+    </table>
     <div class="step">
       <div class="step-num">5</div>
       <div class="step-text">
-        <strong>ഓരോ document/register-ന്റെ status mark ചെയ്യുക</strong>
-        <span>14 NSQF documents, Registers, Fire Extinguisher — ഓരോന്നിനും 3 options ഉണ്ട്:</span>
+        <strong>ഓരോ item-നും status mark ചെയ്യുക</strong>
+        <span>ഓരോ item-നും 3 buttons ഉണ്ട് — ശരിയായത് press ചെയ്യുക:</span>
       </div>
     </div>
     <div class="toggle-row">
-      <span class="badge yes">✅ Available</span>
-      <span class="badge no">❌ Not Available</span>
-      <span class="badge nu">⚠️ Not Updated</span>
+      <span class="badge yes">✅ Yes — Available</span>
+      <span class="badge no">❌ No — Not Available</span>
+      <span class="badge nu">⚠️ N/U — Not Updated</span>
     </div>
-    <p style="font-size:13px;color:var(--muted);margin-top:4px;">Button ഒരു തവണ press ചെയ്താൽ ✅, വീണ്ടും press ചെയ്താൽ ❌, വീണ്ടും press ചെയ്താൽ ⚠️ — ഇങ്ങനെ change ആകും. Remark box-ൽ notes എഴുതാം.</p>
+    <p style="font-size:13px;color:var(--muted);margin-top:4px;">ഓരോ item-ന്റെയും താഴെയുള്ള box-ൽ remark എഴുതാം. മുകളിലെ summary bar-ൽ Yes / No / N/U count കാണാം.</p>
+
+    <div class="step" style="margin-top:12px;">
+      <div class="step-num">✏️</div>
+      <div class="step-text">
+        <strong>Item-ന്റെ പേര് മാറ്റാം (Edit)</strong>
+        <span>Item-ന്റെ പേരിന് അടുത്തുള്ള ✏️ press ചെയ്ത് പുതിയ പേര് type ചെയ്ത് Enter അമർത്തുക.</span>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">🗑</div>
+      <div class="step-text">
+        <strong>Item delete ചെയ്യാം</strong>
+        <span>🗑 press ചെയ്യുക — confirm ചോദിക്കും. ആവശ്യമില്ലാത്ത items ഇങ്ങനെ ഒഴിവാക്കാം.</span>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">↺</div>
+      <div class="step-text">
+        <strong>Default list തിരികെ കൊണ്ടുവരാം (Reset)</strong>
+        <span>Section A, B heading-ന് അടുത്തുള്ള <span class="en">↺ Reset</span> press ചെയ്താൽ ആ section-ലെ original list തിരികെ വരും. ആ section-ലെ marks-ഉം remarks-ഉം clear ആകും.</span>
+      </div>
+    </div>
+    <div class="note">
+      📝 Edit / Delete ചെയ്ത മാറ്റങ്ങൾ <strong>നിങ്ങളുടെ list-ൽ മാത്രം</strong> ആണ് — മറ്റ് inspectors-നെ ബാധിക്കില്ല. അടുത്ത inspection-ലും നിങ്ങളുടെ മാറ്റിയ list തന്നെ വരും. (ഈ list ആ phone-ൽ ആണ് save ആകുന്നത് — മറ്റൊരു phone-ൽ default list ആയിരിക്കും.)
+    </div>
 
     <h3>Step 4 — Save / Print</h3>
     <div class="step">
@@ -344,6 +385,34 @@
         <span>A4 format-ൽ ഒരു complete inspection report print ആകും. PDF ആയി save ചെയ്യാം.</span>
       </div>
     </div>
+    <div class="step">
+      <div class="step-num">8</div>
+      <div class="step-text">
+        <strong><span class="en">🏠 New</span> press ചെയ്ത് അടുത്ത trade</strong>
+        <span>Save ചെയ്ത ശേഷം New press ചെയ്യുക. District-ഉം ITI-യും അതുപോലെ നിൽക്കും — അടുത്ത Trade select ചെയ്ത് തുടങ്ങാം.</span>
+      </div>
+    </div>
+
+    <h3>🛡️ Marking നഷ്ടപ്പെടാതിരിക്കാൻ</h3>
+    <div class="step">
+      <div class="step-num">💾</div>
+      <div class="step-text">
+        <strong>Auto-save Draft</strong>
+        <span>Mark ചെയ്യുമ്പോഴും remark എഴുതുമ്പോഴും app automatically draft save ചെയ്യും. Phone off ആയാലോ app close ആയാലോ, വീണ്ടും തുറക്കുമ്പോൾ മുകളിൽ ഒരു മഞ്ഞ banner കാണും — <span class="en">Resume Draft</span> press ചെയ്താൽ നിർത്തിയിടത്ത് നിന്ന് തുടരാം.</span>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">⚠️</div>
+      <div class="step-text">
+        <strong>Save ചെയ്യാതെ മാറുമ്പോൾ warning</strong>
+        <span>Save ചെയ്യാത്ത marks ഉള്ളപ്പോൾ District, ITI, Trade മാറ്റുകയോ New press ചെയ്യുകയോ ചെയ്താൽ "Unsaved Marks!" എന്ന warning വരും:</span>
+      </div>
+    </div>
+    <table class="tbl">
+      <tr><td><strong>💾 Save &amp; Switch</strong></td><td>ഇപ്പോഴത്തെ inspection save ചെയ്ത ശേഷം മാറും</td></tr>
+      <tr><td><strong>🗑 Discard Marks &amp; Switch</strong></td><td>Marks കളഞ്ഞ് മാറും</td></tr>
+      <tr><td><strong>✖ Cancel</strong></td><td>ഒന്നും മാറില്ല — ഇപ്പോഴത്തെ inspection തുടരാം</td></tr>
+    </table>
   </div>
 
   <!-- HISTORY -->
@@ -403,6 +472,12 @@
       ✅ Sign in ചെയ്തിട്ടുണ്ടെങ്കിൽ — <strong>ഏത് phone-ലും, ഏത് laptop-ലും, ഏത് browser-ലും</strong> same data കാണാം.<br><br>
       ⚠️ Sign in ചെയ്തിട്ടില്ലെങ്കിൽ — data ആ device-ൽ മാത്രം save ആകും (cloud-ൽ ആകില്ല).
     </div>
+    <table class="tbl" style="margin-top:10px;">
+      <tr><th>Data</th><th>എവിടെ save ആകുന്നു</th></tr>
+      <tr><td>Inspections (sign in ചെയ്ത്)</td><td>☁️ Cloud — ഏത് device-ലും കാണാം</td></tr>
+      <tr><td>Inspections (sign in ചെയ്യാതെ)</td><td>📱 ആ phone-ൽ മാത്രം</td></tr>
+      <tr><td>Draft, last District/ITI, edit ചെയ്ത checklist</td><td>📱 ആ phone-ൽ മാത്രം</td></tr>
+    </table>
 
     <div class="note note-blue" style="margin-top:10px;">
       🔒 <strong>Privacy:</strong> ഓരോ inspector-ന്റെ data-ഉം separate ആണ്. ഒരാൾക്ക് മറ്റൊരാളുടെ data കാണാൻ കഴിയില്ല.
@@ -478,7 +553,7 @@
       <div class="step-num">🔄</div>
       <div class="step-text">
         <strong>Internet ഇല്ലാതെ?</strong>
-        <span>Sign in ചെയ്തിട്ടില്ലെങ്കിൽ app device-ൽ work ചെയ്യും, data local-ൽ save ആകും. Internet ഉള്ളപ്പോൾ sign in ചെയ്ത് cloud-ൽ sync ചെയ്യാം.</span>
+        <span>Internet ഇല്ലെങ്കിലും app work ചെയ്യും, inspection ആ phone-ൽ save ആകും. പക്ഷേ ഇങ്ങനെ save ചെയ്ത records പിന്നീട് sign in ചെയ്താലും cloud-ലേക്ക് automatically പോകില്ല. അതിനാൽ ITI-യിൽ പോകുന്നതിന് മുമ്പ് internet ഉള്ളപ്പോൾ sign in ചെയ്യുക.</span>
       </div>
     </div>
   </div>
