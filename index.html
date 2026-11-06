@@ -287,9 +287,9 @@ textarea { resize: vertical; min-height: 60px; }
 <div class="navbar">
   <h1>🏭 ITI Inspection</h1>
   <div class="nav-btns">
-    <button class="nav-btn active" onclick="newInspectionPressed()">🏠 New</button>
-    <button class="nav-btn" onclick="showPage('history')">📋 History</button>
-    <button class="nav-btn" onclick="showPage('profile')">👤 Profile</button>
+    <button class="nav-btn active" data-page="home" onclick="newInspectionPressed()">🏠 New</button>
+    <button class="nav-btn" data-page="history" onclick="showPage('history')">📋 History</button>
+    <button class="nav-btn" data-page="profile" onclick="showPage('profile')">👤 Profile</button>
     <a class="nav-btn" href="guide.html" target="_blank" rel="noopener" title="User Guide (Malayalam)" style="text-decoration:none;display:inline-flex;align-items:center;">📖 Guide</a>
   </div>
 </div>
@@ -383,21 +383,21 @@ textarea { resize: vertical; min-height: 60px; }
 
       <!-- Section A: NSQF Documents -->
       <div class="section-hdr">
-        <h3>📄 Section A — NSQF Documents</h3>
+        <h3>📄 <span id="hdr-nsqf">Section A — NSQF Documents</span></h3>
         <button class="no-print" onclick="resetSectionToDefault('nsqf')" title="Restore default items" style="background:none;border:none;font-size:11px;color:#6b7280;cursor:pointer;padding:2px 6px;">↺ Reset</button>
       </div>
       <div id="nsqf-items"></div>
 
       <!-- Section B: Registers & Safety -->
       <div class="section-hdr">
-        <h3>📦 Section B — Registers &amp; Safety</h3>
+        <h3>📦 <span id="hdr-reg">Section B — Registers &amp; Safety</span></h3>
         <button class="no-print" onclick="resetSectionToDefault('reg')" title="Restore default items" style="background:none;border:none;font-size:11px;color:#6b7280;cursor:pointer;padding:2px 6px;">↺ Reset</button>
       </div>
       <div id="reg-items"></div>
 
       <!-- Section C: Custom Items -->
       <div class="section-hdr">
-        <h3>➕ Section C — Additional Items</h3>
+        <h3>➕ <span id="hdr-custom">Section C — Additional Items</span></h3>
         <span class="badge" id="custom-count">0</span>
       </div>
       <div id="custom-items"></div>
@@ -462,6 +462,25 @@ textarea { resize: vertical; min-height: 60px; }
       <button class="btn btn-outline" onclick="loadProfile()">↩️ Reload Saved</button>
     </div>
     <div id="prof-msg" style="margin-top:10px; font-size:13px; color:var(--success); display:none;"></div>
+  </div>
+
+  <div class="card">
+    <h2>⚙️ Settings</h2>
+    <p style="font-size:13px; color:var(--muted); margin-bottom:12px;">How checklist items are shown during inspection, in History and in the printed report.</p>
+    <label>Checklist Language</label>
+    <select id="set-lang" onchange="changeSettings()">
+      <option value="en">English</option>
+      <option value="ml">മലയാളം (Malayalam)</option>
+    </select>
+    <label style="display:flex;align-items:center;gap:10px;margin-top:14px;cursor:pointer;">
+      <input type="checkbox" id="set-question" onchange="changeSettings()" style="width:20px;height:20px;margin:0;">
+      <span>Show items as questions</span>
+    </label>
+    <div style="margin-top:12px;padding:10px 12px;background:#f0f4ff;border-radius:8px;font-size:13px;">
+      <div style="color:var(--muted);font-size:11px;margin-bottom:4px;">Preview</div>
+      <div id="set-preview"></div>
+    </div>
+    <div id="set-msg" style="margin-top:8px;font-size:12px;color:var(--success);display:none;">✅ Settings saved</div>
   </div>
 
   <div class="card">
@@ -645,44 +664,154 @@ const ITI_DATA = {
 };
 
 // NSQF 14 Documents
-const NSQF_DOCS_DEFAULT = [
-  "Lesson Plan","Demonstration Plan","Information Sheet","Job Sheet",
-  "Annexure II","Annexure III","Trainer's Observation & Evidence Report",
-  "On Job Training Register","Split-up Syllabus – Skill",
-  "Split-up Syllabus – Theory WCS ED & ES","Program of Coaching – Skill",
-  "Program of Coaching – Theory WCS ED & ES","Project Planning Register","Progress Card"
+// ================================================================
+// CHECKLIST ITEM DEFINITIONS — name + question, English + Malayalam
+// id never changes, so saved records can be shown in any language/mode
+// ================================================================
+const NSQF_DEFS = [
+  { id:'lesson_plan', en:"Lesson Plan", ml:"ലെസൺ പ്ലാൻ",
+    qEn:"Is the Lesson Plan prepared?", qMl:"ലെസൺ പ്ലാൻ തയ്യാറാക്കിയിട്ടുണ്ടോ?" },
+  { id:'demo_plan', en:"Demonstration Plan", ml:"ഡെമോൺസ്ട്രേഷൻ പ്ലാൻ",
+    qEn:"Is the Demonstration Plan prepared?", qMl:"ഡെമോൺസ്ട്രേഷൻ പ്ലാൻ തയ്യാറാക്കിയിട്ടുണ്ടോ?" },
+  { id:'info_sheet', en:"Information Sheet", ml:"ഇൻഫർമേഷൻ ഷീറ്റ്",
+    qEn:"Are Information Sheets prepared for the lessons?", qMl:"പാഠങ്ങൾക്കുള്ള ഇൻഫർമേഷൻ ഷീറ്റ് തയ്യാറാക്കിയിട്ടുണ്ടോ?" },
+  { id:'job_sheet', en:"Job Sheet", ml:"ജോബ് ഷീറ്റ്",
+    qEn:"Are Job Sheets prepared for the practicals?", qMl:"പ്രാക്ടിക്കലിനുള്ള ജോബ് ഷീറ്റ് തയ്യാറാക്കിയിട്ടുണ്ടോ?" },
+  { id:'annex_2', en:"Annexure II", ml:"അനക്സർ II",
+    qEn:"Is Annexure II maintained?", qMl:"അനക്സർ II സൂക്ഷിക്കുന്നുണ്ടോ?" },
+  { id:'annex_3', en:"Annexure III", ml:"അനക്സർ III",
+    qEn:"Is Annexure III maintained?", qMl:"അനക്സർ III സൂക്ഷിക്കുന്നുണ്ടോ?" },
+  { id:'toer', en:"Trainer's Observation & Evidence Report", ml:"ട്രെയിനറുടെ ഒബ്സർവേഷൻ & എവിഡൻസ് റിപ്പോർട്ട്",
+    qEn:"Is the Trainer's Observation & Evidence Report maintained?", qMl:"ട്രെയിനറുടെ ഒബ്സർവേഷൻ & എവിഡൻസ് റിപ്പോർട്ട് സൂക്ഷിക്കുന്നുണ്ടോ?" },
+  { id:'ojt_reg', en:"On Job Training Register", ml:"ഓൺ ജോബ് ട്രെയിനിംഗ് രജിസ്റ്റർ",
+    qEn:"Is the On Job Training Register maintained?", qMl:"ഓൺ ജോബ് ട്രെയിനിംഗ് രജിസ്റ്റർ സൂക്ഷിക്കുന്നുണ്ടോ?" },
+  { id:'split_skill', en:"Split-up Syllabus – Skill", ml:"സ്പ്ലിറ്റ്-അപ്പ് സിലബസ് – സ്കിൽ",
+    qEn:"Is the Split-up Syllabus for Skill prepared?", qMl:"സ്കിൽ വിഭാഗത്തിന്റെ സ്പ്ലിറ്റ്-അപ്പ് സിലബസ് തയ്യാറാക്കിയിട്ടുണ്ടോ?" },
+  { id:'split_theory', en:"Split-up Syllabus – Theory WCS ED & ES", ml:"സ്പ്ലിറ്റ്-അപ്പ് സിലബസ് – തിയറി, WCS, ED & ES",
+    qEn:"Is the Split-up Syllabus for Theory, WCS, ED & ES prepared?", qMl:"തിയറി, WCS, ED & ES എന്നിവയുടെ സ്പ്ലിറ്റ്-അപ്പ് സിലബസ് തയ്യാറാക്കിയിട്ടുണ്ടോ?" },
+  { id:'poc_skill', en:"Program of Coaching – Skill", ml:"പ്രോഗ്രാം ഓഫ് കോച്ചിംഗ് – സ്കിൽ",
+    qEn:"Is the Program of Coaching for Skill prepared?", qMl:"സ്കിൽ വിഭാഗത്തിന്റെ പ്രോഗ്രാം ഓഫ് കോച്ചിംഗ് തയ്യാറാക്കിയിട്ടുണ്ടോ?" },
+  { id:'poc_theory', en:"Program of Coaching – Theory WCS ED & ES", ml:"പ്രോഗ്രാം ഓഫ് കോച്ചിംഗ് – തിയറി, WCS, ED & ES",
+    qEn:"Is the Program of Coaching for Theory, WCS, ED & ES prepared?", qMl:"തിയറി, WCS, ED & ES എന്നിവയുടെ പ്രോഗ്രാം ഓഫ് കോച്ചിംഗ് തയ്യാറാക്കിയിട്ടുണ്ടോ?" },
+  { id:'project_reg', en:"Project Planning Register", ml:"പ്രോജക്ട് പ്ലാനിംഗ് രജിസ്റ്റർ",
+    qEn:"Is the Project Planning Register maintained?", qMl:"പ്രോജക്ട് പ്ലാനിംഗ് രജിസ്റ്റർ സൂക്ഷിക്കുന്നുണ്ടോ?" },
+  { id:'progress_card', en:"Progress Card", ml:"പ്രോഗ്രസ് കാർഡ്",
+    qEn:"Is the Progress Card maintained?", qMl:"പ്രോഗ്രസ് കാർഡ് സൂക്ഷിക്കുന്നുണ്ടോ?" }
 ];
 
-// Default Registers & Safety (from official Inspector circular)
-const DEFAULT_REG_DEFAULTS = [
-  // Trainee Records
-  "Trainees' Log Book / Diary / Notes",
-  "Trainees' Progress Card",
-  "Trainees' Attendance Register",
-  "Trainees' Caution / Security Deposit",
-  // Equipment & Materials
-  "Availability of Training Materials",
-  "Machinery Maintenance Records",
-  "Condemned Equipment – Records",
-  "Condemned Equipment – Auction",
-  "Metal Scrap Auction",
-  "Use of Revamped Equipment",
-  "Stock Register",
-  "Consumable Register",
-  // Facilities & Infrastructure
-  "Drinking Water Availability for Trainees",
-  "Campus Cleanliness",
-  "Building Maintenance",
-  "Vehicle Log Book",
-  "Fire Extinguisher – Availability",
-  "Fire Extinguisher – Condition",
-  // Administration
-  "PTA / IMC Meeting Records",
-  "Staff Duty Punctuality",
-  "Group Instructor / Principal Trade Visit",
-  "Skill Karma Sena Activities",
-  "ATI without Land / Building – Status"
+// Registers & Safety — from circular DT/1422/2026-F3 (18-05-2026)
+const REG_DEFS = [
+  { id:'tr_logbook', en:"Trainees' Log Book / Diary / Notes", ml:"ട്രെയിനികളുടെ ലോഗ് ബുക്ക് / ഡയറി / നോട്ട്",
+    qEn:"Are the trainees' Log Book, Diary and Notes up to date?", qMl:"ട്രെയിനികളുടെ ലോഗ് ബുക്ക്, ഡയറി, നോട്ട് എന്നിവ കൃത്യമായി എഴുതുന്നുണ്ടോ?" },
+  { id:'tr_progress', en:"Trainees' Progress Card", ml:"ട്രെയിനികളുടെ പ്രോഗ്രസ് കാർഡ്",
+    qEn:"Are the trainees' Progress Cards updated?", qMl:"ട്രെയിനികളുടെ പ്രോഗ്രസ് കാർഡ് അപ്ഡേറ്റ് ചെയ്തിട്ടുണ്ടോ?" },
+  { id:'tr_attendance', en:"Trainees' Attendance Register", ml:"ട്രെയിനികളുടെ ഹാജർ രജിസ്റ്റർ",
+    qEn:"Is the trainees' Attendance Register maintained properly?", qMl:"ട്രെയിനികളുടെ ഹാജർ രജിസ്റ്റർ കൃത്യമായി സൂക്ഷിക്കുന്നുണ്ടോ?" },
+  { id:'caution_deposit', en:"Trainees' Caution / Security Deposit", ml:"ട്രെയിനികളുടെ കോഷൻ / സെക്യൂരിറ്റി ഡെപ്പോസിറ്റ്",
+    qEn:"Are the trainees' Caution / Security Deposit records in order?", qMl:"ട്രെയിനികളുടെ കോഷൻ / സെക്യൂരിറ്റി ഡെപ്പോസിറ്റ് രേഖകൾ കൃത്യമാണോ?" },
+  { id:'training_materials', en:"Availability of Training Materials", ml:"പരിശീലന സാമഗ്രികളുടെ ലഭ്യത",
+    qEn:"Are the required training materials available?", qMl:"ആവശ്യമായ പരിശീലന സാമഗ്രികൾ ലഭ്യമാണോ?" },
+  { id:'machinery_maint', en:"Machinery Maintenance Records", ml:"യന്ത്രസാമഗ്രികളുടെ മെയിന്റനൻസ്",
+    qEn:"Is the machinery maintained, and is it recorded?", qMl:"യന്ത്രസാമഗ്രികളുടെ മെയിന്റനൻസ് നടത്തി രേഖപ്പെടുത്തുന്നുണ്ടോ?" },
+  { id:'condemn_records', en:"Condemned Equipment – Records", ml:"ഉപയോഗശൂന്യമായ യന്ത്രസാമഗ്രികളുടെ കണ്ടംനേഷൻ",
+    qEn:"Has unusable equipment been condemned?", qMl:"ഉപയോഗശൂന്യമായ യന്ത്രസാമഗ്രികൾ കണ്ടംനേഷൻ ചെയ്തിട്ടുണ്ടോ?" },
+  { id:'condemn_auction', en:"Condemned Equipment – Auction", ml:"കണ്ടംനേഷൻ ചെയ്ത ഉപകരണങ്ങളുടെ ലേലം",
+    qEn:"Have the condemned items been auctioned?", qMl:"കണ്ടംനേഷൻ ചെയ്ത ഉപകരണങ്ങൾ ലേലം ചെയ്തിട്ടുണ്ടോ?" },
+  { id:'scrap_auction', en:"Metal Scrap Auction", ml:"മെറ്റൽ സ്ക്രാപ്പ് ലേലം",
+    qEn:"Has the metal scrap been auctioned?", qMl:"മെറ്റൽ സ്ക്രാപ്പ് ലേലം ചെയ്തിട്ടുണ്ടോ?" },
+  { id:'revamp_equipment', en:"Use of Revamped Equipment", ml:"റീവാമ്പിംഗിന്റെ ഭാഗമായി വാങ്ങിയ ഉപകരണങ്ങളുടെ ഉപയോഗം",
+    qEn:"Is the equipment bought under revamping being used for training?", qMl:"റീവാമ്പിംഗിന്റെ ഭാഗമായി വാങ്ങിയ ഉപകരണങ്ങൾ പരിശീലനത്തിന് ഉപയോഗിക്കുന്നുണ്ടോ?" },
+  { id:'stock_reg', en:"Stock Register", ml:"സ്റ്റോക്ക് രജിസ്റ്റർ",
+    qEn:"Is the Stock Register maintained and up to date?", qMl:"സ്റ്റോക്ക് രജിസ്റ്റർ കൃത്യമായി സൂക്ഷിക്കുന്നുണ്ടോ?" },
+  { id:'consumable_reg', en:"Consumable Register", ml:"കൺസ്യൂമബിൾ രജിസ്റ്റർ",
+    qEn:"Is the Consumable Register maintained and up to date?", qMl:"കൺസ്യൂമബിൾ രജിസ്റ്റർ കൃത്യമായി സൂക്ഷിക്കുന്നുണ്ടോ?" },
+  { id:'drinking_water', en:"Drinking Water Availability for Trainees", ml:"ട്രെയിനികൾക്ക് ആവശ്യമായ കുടിവെള്ളം",
+    qEn:"Is drinking water available for the trainees?", qMl:"ട്രെയിനികൾക്ക് ആവശ്യമായ കുടിവെള്ളം ലഭ്യമാണോ?" },
+  { id:'cleanliness', en:"Campus Cleanliness", ml:"പരിസര ശുചീകരണം",
+    qEn:"Is the campus kept clean?", qMl:"സ്ഥാപനത്തിന്റെ പരിസരം വൃത്തിയായി സൂക്ഷിക്കുന്നുണ്ടോ?" },
+  { id:'building_maint', en:"Building Maintenance", ml:"കെട്ടിട മെയിന്റനൻസ്",
+    qEn:"Is the building properly maintained?", qMl:"കെട്ടിടം ശരിയായി മെയിന്റനൻസ് ചെയ്യുന്നുണ്ടോ?" },
+  { id:'vehicle_log', en:"Vehicle Log Book", ml:"വാഹനത്തിന്റെ ലോഗ് ബുക്ക്",
+    qEn:"Is the institution vehicle's Log Book maintained?", qMl:"സ്ഥാപനത്തിലെ വാഹനത്തിന്റെ ലോഗ് ബുക്ക് സൂക്ഷിക്കുന്നുണ്ടോ?" },
+  { id:'fire_avail', en:"Fire Extinguisher – Availability", ml:"ഫയർ എക്സ്റ്റിംഗ്വിഷർ – ലഭ്യത",
+    qEn:"Is a fire extinguisher available in the workshop?", qMl:"വർക്ക്ഷോപ്പിൽ ഫയർ എക്സ്റ്റിംഗ്വിഷർ ഉണ്ടോ?" },
+  { id:'fire_condition', en:"Fire Extinguisher – Condition", ml:"ഫയർ എക്സ്റ്റിംഗ്വിഷർ – പ്രവർത്തനക്ഷമത",
+    qEn:"Is the fire extinguisher in working condition and within its refill date?", qMl:"ഫയർ എക്സ്റ്റിംഗ്വിഷർ പ്രവർത്തനക്ഷമമാണോ (റീഫിൽ കാലാവധിക്കുള്ളിൽ)?" },
+  { id:'pta_imc', en:"PTA / IMC Meeting Records", ml:"PTA / IMC മീറ്റിംഗ്",
+    qEn:"Are PTA / IMC meetings held, with minutes recorded?", qMl:"PTA / IMC മീറ്റിംഗുകൾ നടത്തി മിനിറ്റ്സ് രേഖപ്പെടുത്തിയിട്ടുണ്ടോ?" },
+  { id:'staff_role', en:"Staff Participation in Training", ml:"ട്രെയിനിംഗ് നൽകുന്നതിലുള്ള ജീവനക്കാരുടെ പങ്ക്",
+    qEn:"Are all the staff taking part in delivering training?", qMl:"ട്രെയിനിംഗ് നൽകുന്നതിൽ എല്ലാ ജീവനക്കാരും പങ്കെടുക്കുന്നുണ്ടോ?" },
+  { id:'staff_punctuality', en:"Staff Duty Punctuality", ml:"ജീവനക്കാരുടെ ജോലിയുടെ കൃത്യത",
+    qEn:"Are the staff carrying out their duties punctually?", qMl:"ജീവനക്കാർ ജോലി കൃത്യമായി നിർവഹിക്കുന്നുണ്ടോ?" },
+  { id:'trade_visit', en:"Group Instructor / Principal Trade Visit", ml:"ഗ്രൂപ്പ് ഇൻസ്ട്രക്ടർ / പ്രിൻസിപ്പാൾ ട്രേഡ് വിസിറ്റ്",
+    qEn:"Do the Group Instructor and Principal visit the trade regularly?", qMl:"ഗ്രൂപ്പ് ഇൻസ്ട്രക്ടറും പ്രിൻസിപ്പാളും ട്രേഡ് വിസിറ്റ് നടത്തുന്നുണ്ടോ?" },
+  { id:'karmasena', en:"Nypunya Karmasena Activities", ml:"നൈപുണ്യ കർമ്മസേനയുടെ പ്രവർത്തനം", alias:["Skill Karma Sena Activities"],
+    qEn:"Is the Nypunya Karmasena active in the institution?", qMl:"നൈപുണ്യ കർമ്മസേന പ്രവർത്തിക്കുന്നുണ്ടോ?" },
+  { id:'no_land_building', en:"Functioning of ITI without Own Land / Building", ml:"സ്ഥലം / കെട്ടിടം ലഭ്യമല്ലാത്ത ITI-യുടെ പ്രവർത്തനം", alias:["ATI without Land / Building – Status"],
+    qEn:"If the ITI has no own land or building, is training running without disruption?", qMl:"സ്വന്തം സ്ഥലം / കെട്ടിടം ഇല്ലെങ്കിൽ, പരിശീലനം തടസ്സമില്ലാതെ നടക്കുന്നുണ്ടോ?" }
 ];
+// Items added to the defaults after an inspector may already have a saved list
+const NEW_DEF_IDS = ['staff_role'];
+
+const ALL_DEFS = {}, DEF_BY_NAME = {};
+[...NSQF_DEFS, ...REG_DEFS].forEach(d => {
+  ALL_DEFS[d.id] = d;
+  DEF_BY_NAME[d.en.toLowerCase()] = d;
+  (d.alias || []).forEach(a => DEF_BY_NAME[a.toLowerCase()] = d);
+});
+const defaultItems = defs => defs.map(d => ({ id: d.id, name: d.en }));
+
+// Convert a stored entry (old string or {id,name}) into an item object
+function toItem(x) {
+  if (typeof x === 'string') {
+    const d = DEF_BY_NAME[x.toLowerCase()];
+    return d ? { id: d.id, name: d.en } : { name: x };
+  }
+  if (x && x.id && ALL_DEFS[x.id]) return { id: x.id, name: ALL_DEFS[x.id].en };
+  return { name: (x && x.name) || '' };
+}
+
+function findDef(item) {
+  if (!item) return null;
+  if (item.id && ALL_DEFS[item.id]) return ALL_DEFS[item.id];
+  return DEF_BY_NAME[(item.name || '').toLowerCase()] || null;
+}
+
+// ── Settings (per inspector) ─────────────────────────────────────
+function settingsKey() {
+  return `appSettings_${window._fbUser ? window._fbUser.uid : 'local'}`;
+}
+function getSettings() {
+  const s = JSON.parse(localStorage.getItem(settingsKey()) || localStorage.getItem('appSettings_local') || '{}');
+  return { lang: s.lang === 'ml' ? 'ml' : 'en', question: !!s.question };
+}
+
+// Text shown for an item under the current settings
+function itemText(item) {
+  const d = findDef(item);
+  if (!d) return item.name;
+  const s = getSettings();
+  if (s.question) return s.lang === 'ml' ? d.qMl : d.qEn;
+  return s.lang === 'ml' ? d.ml : d.en;
+}
+
+const UI_TEXT = {
+  en: { nsqf:'Section A — NSQF Documents', reg:'Section B — Registers & Safety', custom:'Section C — Additional Items',
+        item:'Item', question:'Question', status:'Status', remark:'Remark',
+        yes:'Available', no:'Not Available', nu:'Not Updated', qyes:'Yes', qno:'No', none:'Not Marked', total:'Total' },
+  ml: { nsqf:'വിഭാഗം A — NSQF ഡോക്യുമെന്റുകൾ', reg:'വിഭാഗം B — രജിസ്റ്ററുകളും സുരക്ഷയും', custom:'വിഭാഗം C — അധിക ഇനങ്ങൾ',
+        item:'ഇനം', question:'ചോദ്യം', status:'സ്ഥിതി', remark:'റിമാർക്ക്',
+        yes:'ലഭ്യമാണ്', no:'ലഭ്യമല്ല', nu:'അപ്ഡേറ്റ് ചെയ്തിട്ടില്ല', qyes:'ഉണ്ട്', qno:'ഇല്ല', none:'മാർക്ക് ചെയ്തിട്ടില്ല', total:'ആകെ' }
+};
+function uiText(key) { return UI_TEXT[getSettings().lang][key]; }
+// Status words follow the settings: "Available" for names, "Yes / No" for questions
+function statusWord(status) {
+  const q = getSettings().question;
+  if (status === 'yes') return '✅ ' + uiText(q ? 'qyes' : 'yes');
+  if (status === 'no')  return '❌ ' + uiText(q ? 'qno' : 'no');
+  if (status === 'nu')  return '⚠️ ' + uiText('nu');
+  return '— ' + uiText('none');
+}
 
 // ================================================================
 // STATE
@@ -726,6 +855,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Check for unsaved draft
   checkDraftOnLoad();
+  applySettingsToChecklist();
+  loadSettingsUI();
 });
 
 // ================================================================
@@ -736,10 +867,10 @@ function showPage(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
   if (name === 'history') renderHistory();
-  if (name === 'profile') loadDefaultCustomItems();
+  if (name === 'profile') { loadDefaultCustomItems(); loadSettingsUI(); }
   // Highlight active nav button (find by onclick)
   document.querySelectorAll('.nav-btn').forEach(b => {
-    if (b.getAttribute('onclick') && b.getAttribute('onclick').includes("'"+name+"'")) b.classList.add('active');
+    if (b.dataset.page === name) b.classList.add('active');
   });
 }
 
@@ -1125,8 +1256,16 @@ function loadChecklist() {
   // Load user's saved item lists (falls back to defaults if not customised yet)
   const userKey = getUserItemsKey();
   const savedLists = JSON.parse(localStorage.getItem(userKey) || localStorage.getItem('userItemLists_local') || 'null');
-  nsqfItems  = (savedLists && savedLists.nsqf)   ? savedLists.nsqf.map(n => ({ name: n }))   : NSQF_DOCS_DEFAULT.map(n => ({ name: n }));
-  regItems   = (savedLists && savedLists.reg)    ? savedLists.reg.map(n => ({ name: n }))    : DEFAULT_REG_DEFAULTS.map(n => ({ name: n }));
+  nsqfItems  = (savedLists && savedLists.nsqf) ? savedLists.nsqf.map(toItem) : defaultItems(NSQF_DEFS);
+  regItems   = (savedLists && savedLists.reg)  ? savedLists.reg.map(toItem)  : defaultItems(REG_DEFS);
+  if (savedLists) {
+    // Add default items introduced after this inspector saved their list
+    const seen = savedLists.seen || Object.keys(ALL_DEFS).filter(id => !NEW_DEF_IDS.includes(id));
+    const unseen = id => !seen.includes(id);
+    NSQF_DEFS.filter(d => unseen(d.id)).forEach(d => nsqfItems.push({ id: d.id, name: d.en }));
+    REG_DEFS.filter(d => unseen(d.id)).forEach(d => regItems.push({ id: d.id, name: d.en }));
+    if (!savedLists.seen) saveUserItemLists();
+  }
   const savedCustom = JSON.parse(localStorage.getItem('defaultCustomItems') || '[]');
   customItems = savedCustom.map(n => ({ name: n }));
 
@@ -1147,7 +1286,7 @@ function renderNSQF() {
   const container = document.getElementById('nsqf-items');
   container.innerHTML = '';
   nsqfItems.forEach((item, i) => {
-    container.appendChild(createCheckRow('nsqf', i, item.name));
+    container.appendChild(createCheckRow('nsqf', i, itemText(item)));
   });
 }
 
@@ -1155,7 +1294,7 @@ function renderRegItems() {
   const container = document.getElementById('reg-items');
   container.innerHTML = '';
   regItems.forEach((item, i) => {
-    container.appendChild(createCheckRow('reg', i, item.name));
+    container.appendChild(createCheckRow('reg', i, itemText(item)));
   });
 }
 
@@ -1163,7 +1302,7 @@ function renderCustomItems() {
   const container = document.getElementById('custom-items');
   container.innerHTML = '';
   customItems.forEach((item, i) => {
-    container.appendChild(createCheckRow('custom', i, item.name));
+    container.appendChild(createCheckRow('custom', i, itemText(item)));
   });
   document.getElementById('custom-count').textContent = customItems.length;
 }
@@ -1214,7 +1353,7 @@ function renderSection(section) {
 
 function editItemName(section, idx) {
   const list = getItemList(section);
-  const current = list[idx].name;
+  const current = itemText(list[idx]);
   const label = document.getElementById(`label-${section}-${idx}`);
   if (!label) return;
   const inp = document.createElement('input');
@@ -1233,6 +1372,43 @@ function editItemName(section, idx) {
   inp.focus(); inp.select();
 }
 
+// ── Settings UI ──────────────────────────────────────────────────
+function loadSettingsUI() {
+  const s = getSettings();
+  const l = document.getElementById('set-lang'), q = document.getElementById('set-question');
+  if (l) l.value = s.lang;
+  if (q) q.checked = s.question;
+  updateSettingsPreview();
+}
+
+function updateSettingsPreview() {
+  const el = document.getElementById('set-preview');
+  if (!el) return;
+  el.innerHTML = ['drinking_water', 'lesson_plan']
+    .map(id => '• ' + escHtml(itemText({ id }))).join('<br>');
+}
+
+function changeSettings() {
+  const lang = document.getElementById('set-lang').value;
+  const question = document.getElementById('set-question').checked;
+  localStorage.setItem(settingsKey(), JSON.stringify({ lang, question }));
+  updateSettingsPreview();
+  applySettingsToChecklist();
+  const m = document.getElementById('set-msg');
+  if (m) { m.style.display = 'block'; clearTimeout(m._t); m._t = setTimeout(() => m.style.display = 'none', 1500); }
+}
+
+// Re-draw an open checklist in the current language/mode (marks + remarks are kept)
+function applySettingsToChecklist() {
+  ['nsqf', 'reg', 'custom'].forEach(k => {
+    const h = document.getElementById('hdr-' + k);
+    if (h) h.textContent = uiText(k);
+  });
+  if (document.getElementById('checklist-card').style.display !== 'none') {
+    renderNSQF(); renderRegItems(); renderCustomItems(); updateSummary();
+  }
+}
+
 // ── Per-user item list persistence ───────────────────────────────
 function getUserItemsKey() {
   const uid = window._fbUser ? window._fbUser.uid : 'local';
@@ -1242,8 +1418,8 @@ function getUserItemsKey() {
 function resetSectionToDefault(section) {
   const label = section === 'nsqf' ? 'NSQF Documents' : 'Registers & Safety';
   if (!confirm(`Reset "${label}" to the default list? Your edits will be lost.`)) return;
-  if (section === 'nsqf') nsqfItems = NSQF_DOCS_DEFAULT.map(n => ({ name: n }));
-  if (section === 'reg')  regItems  = DEFAULT_REG_DEFAULTS.map(n => ({ name: n }));
+  if (section === 'nsqf') nsqfItems = defaultItems(NSQF_DEFS);
+  if (section === 'reg')  regItems  = defaultItems(REG_DEFS);
   // Clear statusMap for that section
   Object.keys(statusMap).filter(k => k.startsWith(section+'-')).forEach(k => delete statusMap[k]);
   saveUserItemLists();
@@ -1255,15 +1431,16 @@ function resetSectionToDefault(section) {
 function saveUserItemLists() {
   const key = getUserItemsKey();
   localStorage.setItem(key, JSON.stringify({
-    nsqf: nsqfItems.map(i => i.name),
-    reg:  regItems.map(i => i.name)
+    nsqf: nsqfItems.map(i => i.id ? { id: i.id, name: i.name } : { name: i.name }),
+    reg:  regItems.map(i => i.id ? { id: i.id, name: i.name } : { name: i.name }),
+    seen: Object.keys(ALL_DEFS)
   }));
 }
 
 function saveItemName(section, idx, val) {
   const list = getItemList(section);
   val = val.trim();
-  if (val) list[idx].name = val;
+  if (val && val !== itemText(list[idx])) list[idx] = { name: val };
   if (section === 'nsqf' || section === 'reg') saveUserItemLists();
   renderSection(section);
   updateSummary();
@@ -1350,8 +1527,8 @@ function saveDraft() {
     district, itiIdx, itiName: iti.name, trade, shift, unit,
     statusMap: JSON.parse(JSON.stringify(statusMap)),
     nsqfRemarks, regRemarks,
-    nsqfItems:  nsqfItems.map(c => c.name),
-    regItems:   regItems.map(c => c.name),
+    nsqfItems:  nsqfItems.map(c => c.id ? { id: c.id, name: c.name } : { name: c.name }),
+    regItems:   regItems.map(c => c.id ? { id: c.id, name: c.name } : { name: c.name }),
     customItems: customItems.map(c => c.name),
     savedAt: new Date().toISOString()
   };
@@ -1411,8 +1588,8 @@ function resumeDraft() {
 
     // Build checklist, then apply the draft's own item lists (edits/deletions)
     loadChecklist();
-    if (draft.nsqfItems)   nsqfItems   = draft.nsqfItems.map(n => ({ name: n }));
-    if (draft.regItems)    regItems    = draft.regItems.map(n => ({ name: n }));
+    if (draft.nsqfItems)   nsqfItems   = draft.nsqfItems.map(toItem);
+    if (draft.regItems)    regItems    = draft.regItems.map(toItem);
     if (draft.customItems) customItems = draft.customItems.map(n => ({ name: n }));
 
     // Restore marks + remarks (remarks live in statusMap; older drafts kept them separately)
@@ -1500,11 +1677,13 @@ function collectInspectionData() {
   const staff = getStaffData();
 
   const nsqf = nsqfItems.map((item, i) => ({
+    ...(item.id ? { id: item.id } : {}),
     name: item.name,
     status: getStatus('nsqf', i) || (document.getElementById(`remark-nsqf-${i}`)?.value ? 'nu' : ''),
     remark: document.getElementById(`remark-nsqf-${i}`)?.value || ''
   }));
   const reg = regItems.map((item, i) => ({
+    ...(item.id ? { id: item.id } : {}),
     name: item.name,
     status: getStatus('reg', i) || '',
     remark: document.getElementById(`remark-reg-${i}`)?.value || ''
@@ -1574,10 +1753,8 @@ function openPrintView(data) {
 }
 
 function statusLabel(s) {
-  if (s === 'yes') return '<span style="color:#065f46;font-weight:700;">✅ Available</span>';
-  if (s === 'no')  return '<span style="color:#991b1b;font-weight:700;">❌ Not Available</span>';
-  if (s === 'nu')  return '<span style="color:#92400e;font-weight:700;">⚠️ Not Updated</span>';
-  return '<span style="color:#6b7280;">— Not Marked</span>';
+  const color = s === 'yes' ? '#065f46' : s === 'no' ? '#991b1b' : s === 'nu' ? '#92400e' : '#6b7280';
+  return `<span style="color:${color};font-weight:${s ? 700 : 400};">${statusWord(s)}</span>`;
 }
 
 function buildReportHTML(data) {
@@ -1585,17 +1762,17 @@ function buildReportHTML(data) {
   let rows = '';
   let sno = 1;
   const all = [
-    { section: 'A — NSQF Documents', items: data.nsqf },
-    { section: 'B — Registers & Safety', items: data.reg },
-    { section: 'C — Additional Items', items: data.custom }
+    { section: uiText('nsqf'),   items: data.nsqf },
+    { section: uiText('reg'),    items: data.reg },
+    { section: uiText('custom'), items: data.custom }
   ];
   all.forEach(sec => {
     if (!sec.items || !sec.items.length) return;
-    rows += `<tr><td colspan="4" style="background:#e0e7ff;font-weight:700;padding:7px 10px;color:#1e3a8a;">Section ${sec.section}</td></tr>`;
+    rows += `<tr><td colspan="4" style="background:#e0e7ff;font-weight:700;padding:7px 10px;color:#1e3a8a;">${sec.section}</td></tr>`;
     sec.items.forEach(item => {
       rows += `<tr>
         <td style="text-align:center;width:40px;">${sno++}</td>
-        <td style="padding:6px 8px;">${item.name}</td>
+        <td style="padding:6px 8px;">${escHtml(itemText(item))}</td>
         <td style="text-align:center;white-space:nowrap;">${statusLabel(item.status)}</td>
         <td style="padding:6px 8px;font-size:12px;color:#374151;">${item.remark || ''}</td>
       </tr>`;
@@ -1607,7 +1784,7 @@ function buildReportHTML(data) {
 
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>ITI Inspection Report</title>
   <style>
-    body { font-family: Arial, sans-serif; font-size: 13px; color: #111; margin: 0; padding: 20px; }
+    body { font-family: Arial, 'Noto Sans Malayalam', 'Nirmala UI', sans-serif; font-size: 13px; color: #111; margin: 0; padding: 20px; }
     h1 { text-align: center; font-size: 16px; margin-bottom: 2px; }
     h2 { text-align: center; font-size: 14px; color: #1e3a8a; margin-bottom: 14px; }
     .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 20px; border: 1px solid #ccc; padding: 12px; border-radius: 6px; margin-bottom: 14px; background: #f8fafc; }
@@ -1651,13 +1828,13 @@ function buildReportHTML(data) {
     ${data.staff.remarks ? `<div style="margin-top:7px;font-size:12px;"><strong>Remarks:</strong> ${data.staff.remarks}</div>` : ''}
   </div>` : ''}
   <div class="summary">
-    <span class="pill pill-y">✅ Available: ${yes}</span>
-    <span class="pill pill-n">❌ Not Available: ${no}</span>
-    <span class="pill pill-u">⚠️ Not Updated: ${nu}</span>
-    <span class="pill pill-t">📋 Total: ${tot}</span>
+    <span class="pill pill-y">${statusWord('yes')}: ${yes}</span>
+    <span class="pill pill-n">${statusWord('no')}: ${no}</span>
+    <span class="pill pill-u">${statusWord('nu')}: ${nu}</span>
+    <span class="pill pill-t">📋 ${uiText('total')}: ${tot}</span>
   </div>
   <table>
-    <tr><th style="width:40px;">#</th><th>Item</th><th style="width:150px;">Status</th><th>Remark</th></tr>
+    <tr><th style="width:40px;">#</th><th>${uiText(getSettings().question ? 'question' : 'item')}</th><th style="width:150px;">${uiText('status')}</th><th>${uiText('remark')}</th></tr>
     ${rows}
   </table>
   <div class="footer"><div class="sign-box">${prof.name || 'Inspector'}<br>${prof.desig || ''}</div></div>
@@ -1843,18 +2020,18 @@ function buildViewHTML(rec) {
   }
 
   const sections = [
-    { title:'Section A — NSQF Documents', items: rec.nsqf },
-    { title:'Section B — Registers & Safety', items: rec.reg },
-    { title:'Section C — Additional Items', items: rec.custom }
+    { title: uiText('nsqf'),   items: rec.nsqf },
+    { title: uiText('reg'),    items: rec.reg },
+    { title: uiText('custom'), items: rec.custom }
   ];
   sections.forEach(sec => {
     if (!sec.items?.length) return;
     html += `<h3 style="font-size:13px;color:var(--primary-dark);margin:12px 0 6px;">${sec.title}</h3>`;
     sec.items.forEach((item, i) => {
       const sc = item.status==='yes'?'yes-bg':item.status==='no'?'no-bg':item.status==='nu'?'nu-bg':'';
-      const sl = item.status==='yes'?'✅ Available':item.status==='no'?'❌ Not Available':item.status==='nu'?'⚠️ Not Updated':'— Not Marked';
+      const sl = statusWord(item.status);
       html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px;border:1px solid var(--border);border-radius:6px;margin-bottom:5px;background:#fafafa;">
-        <span style="font-size:12px;">${i+1}. ${item.name}</span>
+        <span style="font-size:12px;">${i+1}. ${escHtml(itemText(item))}</span>
         <span style="font-size:12px;font-weight:700;">${sl}</span>
       </div>`;
       if (item.remark) html += `<div style="font-size:11px;color:var(--muted);padding:0 8px 5px;">↳ ${item.remark}</div>`;
@@ -1915,16 +2092,16 @@ function editRecord(id) {
   </div>`;
 
   const sections = [
-    { key: 'nsqf', title: 'Section A — NSQF Documents', items: rec.nsqf },
-    { key: 'reg',  title: 'Section B — Registers & Safety', items: rec.reg },
-    { key: 'custom', title: 'Section C — Additional Items', items: rec.custom }
+    { key: 'nsqf',   title: uiText('nsqf'),   items: rec.nsqf },
+    { key: 'reg',    title: uiText('reg'),    items: rec.reg },
+    { key: 'custom', title: uiText('custom'), items: rec.custom }
   ];
   sections.forEach(sec => {
     if (!sec.items?.length) return;
     html += `<h3 style="font-size:13px;color:var(--primary-dark);margin:12px 0 6px;">${sec.title}</h3>`;
     sec.items.forEach((item, i) => {
       html += `<div style="border:1px solid var(--border);border-radius:7px;padding:9px 10px;margin-bottom:7px;background:#fafafa;">
-        <div style="font-size:12px;font-weight:700;margin-bottom:6px;">${i+1}. ${item.name}</div>
+        <div style="font-size:12px;font-weight:700;margin-bottom:6px;">${i+1}. ${escHtml(itemText(item))}</div>
         <div style="display:flex;gap:5px;margin-bottom:5px;">
           <button onclick="editToggle(this,'${sec.key}',${i},'yes')" style="padding:4px 10px;border:1.5px solid #d1d5db;border-radius:14px;cursor:pointer;font-size:11px;font-weight:700;background:${item.status==='yes'?'#d1fae5':'#f9fafb'};color:${item.status==='yes'?'#065f46':'#6b7280'};">✅ Yes</button>
           <button onclick="editToggle(this,'${sec.key}',${i},'no')"  style="padding:4px 10px;border:1.5px solid #d1d5db;border-radius:14px;cursor:pointer;font-size:11px;font-weight:700;background:${item.status==='no'?'#fee2e2':'#f9fafb'};color:${item.status==='no'?'#991b1b':'#6b7280'};">❌ No</button>
@@ -2118,6 +2295,8 @@ setTimeout(() => {
 }, 8000);
 
 function updateAuthUI(user) {
+  applySettingsToChecklist();
+  loadSettingsUI();
   const statusEl = document.getElementById('auth-status');
   const signinBtn = document.getElementById('btn-signin');
   const signoutBtn = document.getElementById('btn-signout');
