@@ -92,6 +92,12 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); color:
 }
 .nav-btn:hover { background: rgba(255,255,255,.3); }
 .nav-btn.active { background: #fff; color: var(--primary-dark); }
+@media (max-width: 420px) {
+  .navbar { padding: 0 8px; }
+  .navbar h1 { font-size: 14px; }
+  .navbar .nav-btns { gap: 4px; }
+  .nav-btn { padding: 4px 7px; font-size: 12px; }
+}
 
 /* ===== PAGES ===== */
 .page { display: none; padding: 16px; max-width: 780px; margin: 0 auto; }
@@ -284,6 +290,7 @@ textarea { resize: vertical; min-height: 60px; }
     <button class="nav-btn active" onclick="newInspectionPressed()">🏠 New</button>
     <button class="nav-btn" onclick="showPage('history')">📋 History</button>
     <button class="nav-btn" onclick="showPage('profile')">👤 Profile</button>
+    <a class="nav-btn" href="guide.html" target="_blank" rel="noopener" title="User Guide (Malayalam)" style="text-decoration:none;display:inline-flex;align-items:center;">📖 Guide</a>
   </div>
 </div>
 
