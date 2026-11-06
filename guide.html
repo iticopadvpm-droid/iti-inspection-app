@@ -253,7 +253,7 @@
       ✅ Sign in ചെയ്ത ശേഷം top bar-ൽ <strong>"☁️ Signed in as [your name]"</strong> എന്ന് കാണും.
     </div>
     <div class="note" style="margin-top:10px;">
-      📴 Internet ഇല്ലെങ്കിൽ top bar-ൽ <strong>"Offline — cloud unavailable"</strong> എന്ന് കാണും. അപ്പോൾ inspection ആ phone-ൽ മാത്രം save ആകും.
+      📴 Internet ഇല്ലെങ്കിൽ top bar-ൽ <strong>"Offline"</strong> എന്ന് കാണും. അപ്പോഴും inspection save ചെയ്യാം — ആദ്യം phone-ൽ save ആകും, <strong>internet തിരികെ വരുമ്പോൾ automatically cloud-ലേക്ക് upload ആകും.</strong> Mark ചെയ്തുകൊണ്ടിരിക്കുമ്പോൾ internet വന്നാൽ top bar-ൽ <span class="en">🔄 Reconnect</span> button കാണും — അത് press ചെയ്യുക (marks draft ആയി സുരക്ഷിതമാണ്, <span class="en">Resume Draft</span> press ചെയ്ത് തുടരാം).
     </div>
   </div>
 
@@ -322,6 +322,9 @@
     <h2>🔍 New Inspection — എങ്ങനെ ചെയ്യും</h2>
 
     <h3>Step 1 — ITI Select ചെയ്യുക</h3>
+    <div class="note note-blue">
+      📅 <strong>Inspection Date</strong> — default ആയി ഇന്നത്തെ തീയതി വരും. ഇന്നലെ നടത്തിയ inspection ഇന്ന് enter ചെയ്യുകയാണെങ്കിൽ തീയതി മാറ്റാം (ഭാവിയിലെ തീയതി select ചെയ്യാൻ കഴിയില്ല). History-യിലെ ✏️ Edit-ലും തീയതി തിരുത്താം.
+    </div>
     <div class="step">
       <div class="step-num">1</div>
       <div class="step-text">
@@ -408,7 +411,7 @@
       <div class="step-num">6</div>
       <div class="step-text">
         <strong><span class="en">💾 Save Inspection</span> press ചെയ്യുക</strong>
-        <span>Cloud-ൽ save ആകും. ഏത് device-ൽ നിന്ന് login ചെയ്താലും ഈ record കാണാം.</span>
+        <span>Save ചെയ്ത ശേഷം എന്തെങ്കിലും തിരുത്തി വീണ്ടും Save ചെയ്താൽ <strong>അതേ record update ആകും</strong> — duplicate ഉണ്ടാകില്ല. ഉടനെ phone-ൽ save ആകും, പിന്നെ cloud-ലേക്ക് upload ആകും. Internet ഇല്ലെങ്കിൽ internet വരുമ്പോൾ automatically upload ആകും. ഏത് device-ൽ നിന്ന് login ചെയ്താലും ഈ record കാണാം.</span>
       </div>
     </div>
     <div class="step">
@@ -508,7 +511,8 @@
     <table class="tbl" style="margin-top:10px;">
       <tr><th>Data</th><th>എവിടെ save ആകുന്നു</th></tr>
       <tr><td>Inspections (sign in ചെയ്ത്)</td><td>☁️ Cloud — ഏത് device-ലും കാണാം</td></tr>
-      <tr><td>Inspections (sign in ചെയ്യാതെ)</td><td>📱 ആ phone-ൽ മാത്രം</td></tr>
+      <tr><td>Inspections (internet ഇല്ലാത്തപ്പോൾ)</td><td>📱 Phone-ൽ — internet വരുമ്പോൾ automatically ☁️ Cloud-ലേക്ക്</td></tr>
+      <tr><td>Inspections (sign in ചെയ്യാതെ)</td><td>📱 Phone-ൽ — പിന്നീട് sign in ചെയ്യുമ്പോൾ app ചോദിക്കും: <em>"ഈ account-ലേക്ക് upload ചെയ്യണോ?"</em> OK = upload, Cancel = phone-ൽ മാത്രം</td></tr>
       <tr><td>Draft, last District/ITI, edit ചെയ്ത checklist, Settings</td><td>📱 ആ phone-ൽ മാത്രം</td></tr>
     </table>
 
@@ -565,14 +569,14 @@
       <div class="step-num">📌</div>
       <div class="step-text">
         <strong>Phone Home Screen-ൽ add ചെയ്യാം</strong>
-        <span>Browser-ൽ link തുറന്ന് "Add to Home Screen" select ചെയ്താൽ app icon-പോലെ phone-ൽ കാണും.</span>
+        <span>Browser-ൽ link തുറന്ന് "Add to Home Screen" select ചെയ്താൽ app icon-പോലെ phone-ൽ കാണും. ഒരു തവണ internet ഉള്ളപ്പോൾ app തുറന്നാൽ, പിന്നീട് <strong>internet ഇല്ലാതെയും app തുറക്കാം</strong>.</span>
       </div>
     </div>
     <div class="step">
       <div class="step-num">📤</div>
       <div class="step-text">
         <strong>Export / Import JSON</strong>
-        <span>History page-ൽ "⬇️ Export JSON" button ഉപയോഗിച്ച് backup file download ചെയ്യാം. മറ്റൊരു device-ൽ "⬆️ Import JSON" ഉപയോഗിച്ച് restore ചെയ്യാം.</span>
+        <span>History page-ൽ "⬇️ Export JSON" button ഉപയോഗിച്ച് backup file download ചെയ്യാം. മറ്റൊരു device-ൽ "⬆️ Import JSON" ഉപയോഗിച്ച് restore ചെയ്യാം — sign in ചെയ്തിട്ടുണ്ടെങ്കിൽ import ചെയ്തവ cloud-ലേക്കും upload ആകും.</span>
       </div>
     </div>
     <div class="step">
@@ -586,7 +590,7 @@
       <div class="step-num">🔄</div>
       <div class="step-text">
         <strong>Internet ഇല്ലാതെ?</strong>
-        <span>Internet ഇല്ലെങ്കിലും app work ചെയ്യും, inspection ആ phone-ൽ save ആകും. പക്ഷേ ഇങ്ങനെ save ചെയ്ത records പിന്നീട് sign in ചെയ്താലും cloud-ലേക്ക് automatically പോകില്ല. അതിനാൽ ITI-യിൽ പോകുന്നതിന് മുമ്പ് internet ഉള്ളപ്പോൾ sign in ചെയ്യുക.</span>
+        <span>Internet ഇല്ലെങ്കിലും app work ചെയ്യും. Save ചെയ്ത inspection phone-ൽ ഇരിക്കും, internet വരുമ്പോൾ automatically upload ആകും. History-യിൽ upload ആകാത്തവയ്ക്ക് <strong>"⏳ Waiting to upload"</strong>, upload ആയവയ്ക്ക് <strong>"☁️ Cloud"</strong> എന്ന് കാണും. Top bar-ൽ എത്ര എണ്ണം upload ചെയ്യാനുണ്ടെന്നും കാണാം.<br><br>⚠️ Upload ആകുന്നതിന് മുമ്പ് browser data clear ചെയ്യരുത്. Cloud-ലുള്ള record delete ചെയ്യാൻ internet വേണം.</span>
       </div>
     </div>
   </div>
