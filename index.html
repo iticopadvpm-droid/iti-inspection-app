@@ -915,6 +915,9 @@ function loadITIs(restoreIti) {
   document.getElementById('staff-card').style.display = 'none';
   document.getElementById('shift-unit-row').style.display = 'none';
 
+  document.getElementById('sel-district')._prevDistrict = district;
+  itiSel._prevIti = '';
+  _prevTrade = '';
   if (!district) { localStorage.removeItem('lastITISelection'); return; }
   const itis = ITI_DATA[district] || [];
   itis.forEach((iti, idx) => {
@@ -943,6 +946,8 @@ function loadTradesOnly() {
   const tradeSel = document.getElementById('sel-trade');
   tradeSel.innerHTML = '<option value="">-- Select Trade --</option>';
   tradeSel.disabled = true;
+  document.getElementById('sel-iti')._prevIti = itiIdx;
+  _prevTrade = '';
   if (itiIdx === '' || !district) return;
   const iti = ITI_DATA[district][parseInt(itiIdx)];
   if (!iti) return;
@@ -965,6 +970,8 @@ function loadTrades() {
   document.getElementById('checklist-card').style.display = 'none';
   document.getElementById('staff-card').style.display = 'none';
   document.getElementById('shift-unit-row').style.display = 'none';
+  document.getElementById('sel-iti')._prevIti = itiIdx;
+  _prevTrade = '';
 
   if (itiIdx === '') return;
   const iti = ITI_DATA[district][parseInt(itiIdx)];
@@ -981,10 +988,11 @@ function loadTrades() {
 // ── Unsaved marks protection ──────────────────────────────────────
 // _warnPending stores what to do after user decides
 let _prevTrade = '';
+let _dirty = false;   // true when marks/remarks changed since last save
 let _warnPending = null; // { action: 'district'|'iti'|'trade', prevDistrict, prevIti }
 
 function hasUnsavedMarks() {
-  return Object.keys(statusMap).length > 0;
+  return _dirty && Object.keys(statusMap).length > 0;
 }
 
 function showUnsavedWarning(actionFn, cancelFn, label) {
@@ -1093,6 +1101,7 @@ function loadChecklist() {
   if (!trade) return;
   // Clear any leftover marks from previous trade
   Object.keys(statusMap).forEach(k => delete statusMap[k]);
+  _dirty = false;
 
   const iti = ITI_DATA[district][parseInt(itiIdx)];
   function updateChkTitle() {
@@ -1108,7 +1117,7 @@ function loadChecklist() {
 
   // Load user's saved item lists (falls back to defaults if not customised yet)
   const userKey = getUserItemsKey();
-  const savedLists = JSON.parse(localStorage.getItem(userKey) || 'null');
+  const savedLists = JSON.parse(localStorage.getItem(userKey) || localStorage.getItem('userItemLists_local') || 'null');
   nsqfItems  = (savedLists && savedLists.nsqf)   ? savedLists.nsqf.map(n => ({ name: n }))   : NSQF_DOCS_DEFAULT.map(n => ({ name: n }));
   regItems   = (savedLists && savedLists.reg)    ? savedLists.reg.map(n => ({ name: n }))    : DEFAULT_REG_DEFAULTS.map(n => ({ name: n }));
   const savedCustom = JSON.parse(localStorage.getItem('defaultCustomItems') || '[]');
@@ -1160,22 +1169,28 @@ function createCheckRow(section, idx, name) {
   const status = getStatus(section, idx);
   div.innerHTML = `
     <div class="chk-top">
-      <span class="chk-name" id="label-${section}-${idx}">${idx + 1}. ${name}</span>
+      <div style="display:flex;align-items:flex-start;gap:6px;flex:1;width:100%;">
+        <span class="chk-name" id="label-${section}-${idx}" style="flex:1;">${idx + 1}. ${escHtml(name)}</span>
+        <span class="no-print" style="display:flex;gap:2px;flex-shrink:0;">
+          <button class="chk-delete" title="Edit item name" onclick="editItemName('${section}',${idx})" style="font-size:14px;padding:2px 6px;">✏️</button>
+          <button class="chk-delete" title="Remove item" onclick="removeItem('${section}',${idx})" style="font-size:14px;padding:2px 6px;">🗑</button>
+        </span>
+      </div>
       <div class="status-toggle">
         <button onclick="setStatus('${section}',${idx},'yes')" class="${status==='yes'?'sel-yes':''}">✅ Yes</button>
         <button onclick="setStatus('${section}',${idx},'no')"  class="${status==='no'?'sel-no':''}">❌ No</button>
         <button onclick="setStatus('${section}',${idx},'nu')"  class="${status==='nu'?'sel-nu':''}">⚠️ N/U</button>
       </div>
-      <div class="no-print" style="display:flex;gap:4px;flex-shrink:0;">
-        <button class="chk-delete" title="Edit item name" onclick="editItemName('${section}',${idx})" style="background:#e0f2fe;color:#0369a1;">✏️</button>
-        <button class="chk-delete" title="Remove item" onclick="removeItem('${section}',${idx})">🗑</button>
-      </div>
     </div>
     <div class="chk-remark">
-      <input type="text" placeholder="" id="remark-${section}-${idx}" value="${getRemark(section,idx)}" oninput="updateSummary();saveDraft()">
+      <input type="text" placeholder="" id="remark-${section}-${idx}" value="${(getRemark(section,idx)||'').replace(/"/g,'&quot;')}" oninput="setRemark('${section}',${idx},this.value)">
     </div>
   `;
   return div;
+}
+
+function escHtml(t) {
+  return String(t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 }
 
 function getItemList(section) {
@@ -1194,14 +1209,20 @@ function editItemName(section, idx) {
   const list = getItemList(section);
   const current = list[idx].name;
   const label = document.getElementById(`label-${section}-${idx}`);
-  // Replace label with inline input
-  label.outerHTML = `<input type="text" id="edit-input-${section}-${idx}"
-    style="flex:1;font-size:13px;padding:4px 6px;border:1.5px solid #1a56db;border-radius:6px;"
-    value="${current.replace(/"/g,'&quot;')}"
-    onblur="saveItemName('${section}',${idx},this.value)"
-    onkeydown="if(event.key==='Enter')this.blur();if(event.key==='Escape'){this.value='${current.replace(/'/g,"\\'")}';this.blur();}"
-  >`;
-  const inp = document.getElementById(`edit-input-${section}-${idx}`);
+  if (!label) return;
+  const inp = document.createElement('input');
+  inp.type = 'text';
+  inp.value = current;
+  inp.id = `edit-input-${section}-${idx}`;
+  inp.style.cssText = 'flex:1;font-size:13px;padding:4px 6px;border:1.5px solid #1a56db;border-radius:6px;';
+  let done = false;
+  const finish = (val) => { if (done) return; done = true; saveItemName(section, idx, val); };
+  inp.addEventListener('blur', () => finish(inp.value));
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter') finish(inp.value);
+    if (e.key === 'Escape') finish(current);
+  });
+  label.replaceWith(inp);
   inp.focus(); inp.select();
 }
 
@@ -1221,6 +1242,7 @@ function resetSectionToDefault(section) {
   saveUserItemLists();
   renderSection(section);
   updateSummary();
+  saveDraft();
 }
 
 function saveUserItemLists() {
@@ -1238,6 +1260,7 @@ function saveItemName(section, idx, val) {
   if (section === 'nsqf' || section === 'reg') saveUserItemLists();
   renderSection(section);
   updateSummary();
+  saveDraft();
 }
 
 function removeItem(section, idx) {
@@ -1254,6 +1277,7 @@ function removeItem(section, idx) {
   if (section === 'nsqf' || section === 'reg') saveUserItemLists();
   renderSection(section);
   updateSummary();
+  saveDraft();
 }
 
 // ================================================================
@@ -1264,10 +1288,21 @@ const statusMap = {};
 function getStatus(s, i) { return (statusMap[`${s}-${i}`] || {}).status || ''; }
 function getRemark(s, i) { return (statusMap[`${s}-${i}`] || {}).remark || ''; }
 
+function setRemark(section, idx, val) {
+  const key = `${section}-${idx}`;
+  if (!statusMap[key]) statusMap[key] = {};
+  statusMap[key].remark = val;
+  if (!val && !statusMap[key].status) delete statusMap[key];
+  _dirty = true;
+  updateSummary();
+  saveDraft();
+}
+
 function setStatus(section, idx, val) {
   const key = `${section}-${idx}`;
   if (!statusMap[key]) statusMap[key] = {};
   statusMap[key].status = val;
+  _dirty = true;
 
   // Update toggle buttons
   const row = document.getElementById(`row-${section}-${idx}`);
@@ -1365,32 +1400,27 @@ function resumeDraft() {
     document.getElementById('sel-shift').value = draft.shift || '';
     document.getElementById('sel-unit').value  = draft.unit  || '';
 
-    // Restore item lists (with any edits/deletions from the draft)
-    if (draft.nsqfItems  && draft.nsqfItems.length)   nsqfItems  = draft.nsqfItems.map(n => ({ name: n }));
-    if (draft.regItems   && draft.regItems.length)    regItems   = draft.regItems.map(n => ({ name: n }));
-    if (draft.customItems && draft.customItems.length) customItems = draft.customItems.map(n => ({ name: n }));
+    _prevTrade = draft.trade;
 
-    // Load checklist UI
+    // Build checklist, then apply the draft's own item lists (edits/deletions)
     loadChecklist();
+    if (draft.nsqfItems)   nsqfItems   = draft.nsqfItems.map(n => ({ name: n }));
+    if (draft.regItems)    regItems    = draft.regItems.map(n => ({ name: n }));
+    if (draft.customItems) customItems = draft.customItems.map(n => ({ name: n }));
 
-    // Restore statusMap + remarks after checklist renders
-    setTimeout(() => {
-      Object.assign(statusMap, draft.statusMap);
-
-      // Re-render toggle buttons
-      nsqfItems.forEach((_, i) => {
-        const s = getStatus('nsqf', i);
-        if (s) { const row = document.getElementById(`row-nsqf-${i}`); if (row) { row.querySelectorAll('.status-toggle button').forEach(b => b.className=''); const btns=row.querySelectorAll('.status-toggle button'); ['yes','no','nu'].forEach((v,j)=>{ if(v===s) btns[j].className=`sel-${s}`; }); } }
-        if (draft.nsqfRemarks && draft.nsqfRemarks[i]) { const el=document.getElementById(`remark-nsqf-${i}`); if(el) el.value=draft.nsqfRemarks[i]; }
+    // Restore marks + remarks (remarks live in statusMap; older drafts kept them separately)
+    Object.assign(statusMap, JSON.parse(JSON.stringify(draft.statusMap || {})));
+    [['nsqf', draft.nsqfRemarks], ['reg', draft.regRemarks]].forEach(([sec, rm]) => {
+      Object.entries(rm || {}).forEach(([i, txt]) => {
+        const k = `${sec}-${i}`;
+        if (!statusMap[k]) statusMap[k] = {};
+        if (!statusMap[k].remark) statusMap[k].remark = txt;
       });
-      regItems.forEach((_, i) => {
-        const s = getStatus('reg', i);
-        if (s) { const row = document.getElementById(`row-reg-${i}`); if (row) { row.querySelectorAll('.status-toggle button').forEach(b => b.className=''); const btns=row.querySelectorAll('.status-toggle button'); ['yes','no','nu'].forEach((v,j)=>{ if(v===s) btns[j].className=`sel-${s}`; }); } }
-        if (draft.regRemarks && draft.regRemarks[i]) { const el=document.getElementById(`remark-reg-${i}`); if(el) el.value=draft.regRemarks[i]; }
-      });
-      updateSummary();
-      hideDraftBanner();
-    }, 100);
+    });
+    renderNSQF(); renderRegItems(); renderCustomItems();
+    _dirty = true;
+    updateSummary();
+    hideDraftBanner();
   }, 100);
 }
 
@@ -1439,6 +1469,7 @@ function addCustomItem() {
   inp.value = '';
   renderCustomItems();
   updateSummary();
+  saveDraft();
 }
 
 function removeCustom(idx) { removeItem('custom', idx); }
@@ -1495,6 +1526,7 @@ async function saveInspection() {
     if (ok) {
       _cloudHistory.unshift(record);
       clearDraft();
+      _dirty = false;
       alert('✅ Inspection saved to cloud!');
       renderHistory();
     } else {
@@ -1502,6 +1534,8 @@ async function saveInspection() {
       const history = JSON.parse(localStorage.getItem('inspectionHistory') || '[]');
       history.unshift(record);
       localStorage.setItem('inspectionHistory', JSON.stringify(history));
+      clearDraft();
+      _dirty = false;
       renderHistory();
     }
   } else {
@@ -1509,6 +1543,7 @@ async function saveInspection() {
     history.unshift(record);
     localStorage.setItem('inspectionHistory', JSON.stringify(history));
     clearDraft();
+    _dirty = false;
     alert('✅ Inspection saved (device only — sign in to sync to cloud).');
     renderHistory();
   }
@@ -2065,6 +2100,15 @@ async function clearAllHistory() {
 
 // In-memory history cache (used when logged in via Firebase)
 let _cloudHistory = [];
+
+// If Firebase can't load (no internet / blocked), don't leave the banner stuck
+setTimeout(() => {
+  if (window._fb) return;
+  const st = document.getElementById('auth-status');
+  if (st) st.textContent = '📴 Offline — cloud unavailable. Inspections are saved on this device.';
+  const bi = document.getElementById('btn-signin'); if (bi) bi.style.display = 'none';
+  const bo = document.getElementById('btn-signout'); if (bo) bo.style.display = 'none';
+}, 8000);
 
 function updateAuthUI(user) {
   const statusEl = document.getElementById('auth-status');
