@@ -377,12 +377,14 @@ textarea { resize: vertical; min-height: 60px; }
       <!-- Section A: NSQF Documents -->
       <div class="section-hdr">
         <h3>📄 Section A — NSQF Documents</h3>
+        <button class="no-print" onclick="resetSectionToDefault('nsqf')" title="Restore default items" style="background:none;border:none;font-size:11px;color:#6b7280;cursor:pointer;padding:2px 6px;">↺ Reset</button>
       </div>
       <div id="nsqf-items"></div>
 
       <!-- Section B: Registers & Safety -->
       <div class="section-hdr">
         <h3>📦 Section B — Registers &amp; Safety</h3>
+        <button class="no-print" onclick="resetSectionToDefault('reg')" title="Restore default items" style="background:none;border:none;font-size:11px;color:#6b7280;cursor:pointer;padding:2px 6px;">↺ Reset</button>
       </div>
       <div id="reg-items"></div>
 
@@ -1104,11 +1106,13 @@ function loadChecklist() {
   document.getElementById('sel-unit').onchange  = updateChkTitle;
   document.getElementById('checklist-card').style.display = 'block';
 
-  // Initialise mutable item lists (fresh copy from defaults each time)
-  nsqfItems  = NSQF_DOCS_DEFAULT.map(n => ({ name: n }));
-  regItems   = DEFAULT_REG_DEFAULTS.map(n => ({ name: n }));
-  const saved = JSON.parse(localStorage.getItem('defaultCustomItems') || '[]');
-  customItems = saved.map(n => ({ name: n }));
+  // Load user's saved item lists (falls back to defaults if not customised yet)
+  const userKey = getUserItemsKey();
+  const savedLists = JSON.parse(localStorage.getItem(userKey) || 'null');
+  nsqfItems  = (savedLists && savedLists.nsqf)   ? savedLists.nsqf.map(n => ({ name: n }))   : NSQF_DOCS_DEFAULT.map(n => ({ name: n }));
+  regItems   = (savedLists && savedLists.reg)    ? savedLists.reg.map(n => ({ name: n }))    : DEFAULT_REG_DEFAULTS.map(n => ({ name: n }));
+  const savedCustom = JSON.parse(localStorage.getItem('defaultCustomItems') || '[]');
+  customItems = savedCustom.map(n => ({ name: n }));
 
   // Show staff card and clear fields
   document.getElementById('staff-card').style.display = 'block';
@@ -1201,16 +1205,45 @@ function editItemName(section, idx) {
   inp.focus(); inp.select();
 }
 
+// ── Per-user item list persistence ───────────────────────────────
+function getUserItemsKey() {
+  const uid = window._fbUser ? window._fbUser.uid : 'local';
+  return `userItemLists_${uid}`;
+}
+
+function resetSectionToDefault(section) {
+  const label = section === 'nsqf' ? 'NSQF Documents' : 'Registers & Safety';
+  if (!confirm(`Reset "${label}" to the default list? Your edits will be lost.`)) return;
+  if (section === 'nsqf') nsqfItems = NSQF_DOCS_DEFAULT.map(n => ({ name: n }));
+  if (section === 'reg')  regItems  = DEFAULT_REG_DEFAULTS.map(n => ({ name: n }));
+  // Clear statusMap for that section
+  Object.keys(statusMap).filter(k => k.startsWith(section+'-')).forEach(k => delete statusMap[k]);
+  saveUserItemLists();
+  renderSection(section);
+  updateSummary();
+}
+
+function saveUserItemLists() {
+  const key = getUserItemsKey();
+  localStorage.setItem(key, JSON.stringify({
+    nsqf: nsqfItems.map(i => i.name),
+    reg:  regItems.map(i => i.name)
+  }));
+}
+
 function saveItemName(section, idx, val) {
   const list = getItemList(section);
   val = val.trim();
   if (val) list[idx].name = val;
+  if (section === 'nsqf' || section === 'reg') saveUserItemLists();
   renderSection(section);
   updateSummary();
 }
 
 function removeItem(section, idx) {
   const list = getItemList(section);
+  const itemName = list[idx].name;
+  if (!confirm(`Remove "${itemName}" from this checklist?`)) return;
   list.splice(idx, 1);
   // Shift statusMap keys down
   for (let i = idx; i <= list.length; i++) {
@@ -1218,6 +1251,7 @@ function removeItem(section, idx) {
     if (next) statusMap[`${section}-${i}`] = next;
     else delete statusMap[`${section}-${i}`];
   }
+  if (section === 'nsqf' || section === 'reg') saveUserItemLists();
   renderSection(section);
   updateSummary();
 }
