@@ -281,6 +281,13 @@ body.arranging { padding-bottom: 90px; }
 .hist-table th { background: #e0e7ff; color: #3730a3; font-size: 12px; padding: 8px 10px; text-align: left; border-bottom: 2px solid #c7d2fe; }
 .hist-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
 .hist-table tr:hover td { background: #f0f4ff; }
+/* Long ratings show only their start; tap to see all */
+.rating-badge { display: inline-block; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom;
+  color: #fff; border-radius: 12px; padding: 1px 8px; font-size: 11px; font-weight: 700; cursor: pointer; }
+.rating-badge.full { max-width: none; white-space: normal; }
+#hist-container { overflow-x: auto; }
+.hist-table .h-act { display: grid; grid-template-columns: auto auto; gap: 4px; justify-content: start; }
+.hist-table .h-act .btn { justify-content: center; white-space: nowrap; }
 /* Phones: each inspection becomes a card instead of a wide table row */
 @media (max-width: 640px) {
   .hist-table, .hist-table tbody, .hist-table tr, .hist-table td { display: block; width: 100%; }
@@ -293,6 +300,7 @@ body.arranging { padding-bottom: 90px; }
   .hist-table .h-dist { font-size: 12px; color: var(--muted); }
   .hist-table .h-date { font-size: 12px; }
   .hist-table .h-sum { margin: 4px 0; }
+  .rating-badge { max-width: 100%; }
   .hist-table .h-act { white-space: normal !important; display: grid !important; grid-template-columns: 1fr 1fr 44px 44px; gap: 6px; margin-top: 6px; }
   .hist-table .h-act .btn { width: 100%; min-width: 0; padding-left: 4px; padding-right: 4px; justify-content: center; }
   .hist-table tr { display: flex; flex-direction: column; }
@@ -2393,12 +2401,12 @@ function renderHistory() {
       <td class="h-iti" style="font-size:12px;">${escHtml(r.itiName)}</td>
       <td class="h-trade" style="font-size:12px;">${escHtml(r.trade)}${r.shift||r.unit?'<br><span style="color:var(--muted);font-size:11px;">'+escHtml([r.shift,r.unit].filter(Boolean).join(' / '))+'</span>':''}</td>
       <td class="h-sum">
-        ${r.assessment && ratingDef(r.assessment.rating) ? `<div style="margin-bottom:3px;"><span style="background:${ratingDef(r.assessment.rating).color};color:#fff;border-radius:12px;padding:1px 8px;font-size:11px;font-weight:700;white-space:nowrap;">${escHtml(ratingText(r.assessment))}</span></div>` : ''}
+        ${r.assessment && ratingDef(r.assessment.rating) ? `<div style="margin-bottom:3px;"><span class="rating-badge" title="${escHtml(ratingText(r.assessment))}" onclick="this.classList.toggle('full')" style="background:${ratingDef(r.assessment.rating).color};">${escHtml(ratingText(r.assessment))}</span></div>` : ''}
         <span style="color:#065f46;font-weight:700;">✅${yes}</span>
         <span style="color:#991b1b;font-weight:700;margin:0 4px;">❌${no}</span>
         <span style="color:#92400e;font-weight:700;">⚠️${nu}</span>
       </td>
-      <td class="h-act" style="white-space:nowrap;">
+      <td class="h-act">
         <button class="btn btn-primary btn-xs" onclick="viewRecord('${r.id}')">👁 View</button>
         <button class="btn btn-warning btn-xs" onclick="editRecord('${r.id}')">✏️ Edit</button>
         <button class="btn btn-outline btn-xs" onclick="printRecord('${r.id}')">🖨️</button>
