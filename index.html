@@ -203,6 +203,17 @@ textarea { resize: vertical; min-height: 60px; }
 .chk-row .chk-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 .chk-row .chk-name { font-size: 13px; font-weight: 600; flex: 1; min-width: 140px; }
 .chk-remark { margin-top: 7px; }
+/* Overall assessment */
+.assess-box { margin-top: 18px; border: 2px solid #c7d2fe; border-radius: 10px; padding: 12px; background: #f8faff; }
+.assess-box h3 { font-size: 15px; color: var(--primary-dark); margin: 0 0 10px; }
+.rating-opts { display: flex; flex-direction: column; gap: 7px; }
+.rating-opts button { text-align: left; border: 2px solid #e5e7eb; background: #fff; border-radius: 9px; padding: 9px 12px; font-size: 14px; font-weight: 600; cursor: pointer; color: #374151; }
+.rating-opts button.sel { color: #fff; }
+.urgent-lbl { font-size: 12px; font-weight: 700; color: #991b1b; margin: 10px 0 6px; }
+.urgent-opts { display: flex; flex-wrap: wrap; gap: 6px; }
+.urgent-opts label { display: flex; align-items: center; gap: 6px; border: 1.5px solid #fca5a5; background: #fff; border-radius: 18px; padding: 5px 11px; font-size: 13px; margin: 0; cursor: pointer; }
+.urgent-opts input { width: 16px; height: 16px; margin: 0; flex-shrink: 0; }
+.arrange-mode .assess-box { display: none; }
 /* Arrange mode */
 .chk-tools { display: none; gap: 3px; flex-shrink: 0; align-items: center; margin-left: auto; }
 .chk-tools button { background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px; padding: 3px 7px; cursor: pointer; line-height: 1.2; }
@@ -468,6 +479,18 @@ body.arranging { padding-bottom: 90px; }
       </div>
       <div class="no-print" style="text-align:right;margin-top:8px;">
         <button onclick="resetChecklistToDefault()" style="background:none;border:none;font-size:12px;color:#6b7280;cursor:pointer;padding:4px 6px;text-decoration:underline;">↺ Restore default checklist</button>
+      </div>
+
+      <!-- Overall assessment -->
+      <div class="assess-box" id="assess-box">
+        <h3>🏁 <span id="hdr-assess">Overall Assessment</span></h3>
+        <div class="rating-opts" id="rating-opts"></div>
+        <div id="urgent-by" style="display:none;">
+          <div class="urgent-lbl" id="urgent-lbl">Intervention needed by</div>
+          <div class="urgent-opts" id="urgent-opts"></div>
+        </div>
+        <label id="assess-remarks-lbl" style="margin-top:10px;">Inspector's Remarks / Recommendations</label>
+        <textarea id="assess-remarks" rows="3" oninput="_assessment.remarks=this.value;_dirty=true;saveDraft()"></textarea>
       </div>
 
       <!-- Action buttons -->
@@ -870,14 +893,94 @@ function itemText(item) {
 const UI_TEXT = {
   en: { nsqf:'Section A — NSQF Documents', reg:'Section B — Registers & Safety', custom:'Section C — Additional Items',
         item:'Item', question:'Question',
+        assess:'Overall Assessment', assessRemarks:"Inspector's Remarks / Recommendations", urgentBy:'Intervention needed by',
         onlyMarked:'Only marked items are shown. {n} unmarked item(s) not printed.', noneMarked:'No items marked.', status:'Status', remark:'Remark',
         yes:'Available', no:'Not Available', nu:'Not Updated', qyes:'Yes', qno:'No', none:'Not Marked', total:'Total' },
   ml: { nsqf:'വിഭാഗം A — NSQF ഡോക്യുമെന്റുകൾ', reg:'വിഭാഗം B — രജിസ്റ്ററുകളും സുരക്ഷയും', custom:'വിഭാഗം C — അധിക ഇനങ്ങൾ',
         item:'ഇനം', question:'ചോദ്യം',
+        assess:'മൊത്തത്തിലുള്ള വിലയിരുത്തൽ', assessRemarks:'ഇൻസ്പെക്ടറുടെ അഭിപ്രായം / നിർദ്ദേശങ്ങൾ', urgentBy:'ഇടപെടൽ ആവശ്യമുള്ളത്',
         onlyMarked:'മാർക്ക് ചെയ്ത ഇനങ്ങൾ മാത്രം കാണിച്ചിരിക്കുന്നു. മാർക്ക് ചെയ്യാത്ത {n} ഇനം print ചെയ്തിട്ടില്ല.', noneMarked:'ഒരു ഇനവും മാർക്ക് ചെയ്തിട്ടില്ല.', status:'സ്ഥിതി', remark:'റിമാർക്ക്',
         yes:'ലഭ്യമാണ്', no:'ലഭ്യമല്ല', nu:'അപ്ഡേറ്റ് ചെയ്തിട്ടില്ല', qyes:'ഉണ്ട്', qno:'ഇല്ല', none:'മാർക്ക് ചെയ്തിട്ടില്ല', total:'ആകെ' }
 };
 function uiText(key) { return UI_TEXT[getSettings().lang][key]; }
+// ── Overall assessment ───────────────────────────────────────────
+const RATINGS = [
+  { id:'excellent',  icon:'🌟', en:'Excellent',                  ml:'മികച്ചത്',                     color:'#047857' },
+  { id:'very_good',  icon:'👍', en:'Very Good',                  ml:'വളരെ നല്ലത്',                  color:'#1d4ed8' },
+  { id:'good',       icon:'✅', en:'Good',                       ml:'നല്ലത്',                       color:'#0f766e' },
+  { id:'needs_impr', icon:'⚠️', en:'Needs Improvement',          ml:'മെച്ചപ്പെടുത്തേണ്ടതുണ്ട്',       color:'#b45309' },
+  { id:'urgent',     icon:'🚨', en:'Needs Urgent Intervention',  ml:'അടിയന്തര ഇടപെടൽ ആവശ്യം',      color:'#b91c1c' }
+];
+const URGENT_BY = [
+  { id:'principal', en:'Principal',        ml:'പ്രിൻസിപ്പാൾ' },
+  { id:'vp',        en:'Vice Principal',   ml:'വൈസ് പ്രിൻസിപ്പാൾ' },
+  { id:'gi',        en:'Group Instructor', ml:'ഗ്രൂപ്പ് ഇൻസ്ട്രക്ടർ' }
+];
+const ratingDef = id => RATINGS.find(r => r.id === id);
+const L = o => o[getSettings().lang];
+
+let _assessment = { rating: '', urgentBy: [], remarks: '' };
+function emptyAssessment() { return { rating: '', urgentBy: [], remarks: '' }; }
+
+function renderAssessment() {
+  const box = document.getElementById('rating-opts');
+  if (!box) return;
+  document.getElementById('hdr-assess').textContent = uiText('assess');
+  document.getElementById('urgent-lbl').textContent = uiText('urgentBy');
+  document.getElementById('assess-remarks-lbl').textContent = uiText('assessRemarks');
+  box.innerHTML = RATINGS.map(r => {
+    const sel = _assessment.rating === r.id;
+    return `<button type="button" class="${sel ? 'sel' : ''}" onclick="setRating('${r.id}')"
+      style="${sel ? `background:${r.color};border-color:${r.color};` : `border-color:${r.color}33;`}">${r.icon} ${escHtml(L(r))}</button>`;
+  }).join('');
+  document.getElementById('urgent-by').style.display = _assessment.rating === 'urgent' ? '' : 'none';
+  document.getElementById('urgent-opts').innerHTML = URGENT_BY.map(u =>
+    `<label><input type="checkbox" ${_assessment.urgentBy.includes(u.id) ? 'checked' : ''} onchange="toggleUrgentBy('${u.id}',this.checked)"> ${escHtml(L(u))}</label>`).join('');
+  document.getElementById('assess-remarks').value = _assessment.remarks || '';
+}
+
+function setRating(id) {
+  _assessment.rating = (_assessment.rating === id) ? '' : id;   // tap again to clear
+  if (_assessment.rating !== 'urgent') _assessment.urgentBy = [];
+  _dirty = true;
+  renderAssessment();
+  saveDraft();
+}
+
+function toggleUrgentBy(id, on) {
+  _assessment.urgentBy = _assessment.urgentBy.filter(x => x !== id);
+  if (on) _assessment.urgentBy.push(id);
+  _assessment.urgentBy.sort((a, b) => URGENT_BY.findIndex(u => u.id === a) - URGENT_BY.findIndex(u => u.id === b));
+  _dirty = true;
+  saveDraft();
+}
+
+function hasAssessment(a) { return !!(a && (a.rating || (a.remarks && a.remarks.trim()))); }
+
+// "Needs Urgent Intervention by Principal, Vice Principal"
+function ratingText(a) {
+  const r = a && ratingDef(a.rating);
+  if (!r) return '';
+  let t = `${r.icon} ${L(r)}`;
+  if (r.id === 'urgent' && a.urgentBy && a.urgentBy.length) {
+    const who = a.urgentBy.map(id => L(URGENT_BY.find(u => u.id === id) || { en: id, ml: id }));
+    t += getSettings().lang === 'ml' ? ` — ${who.join(', ')}` : ` by ${who.join(', ')}`;
+  }
+  return t;
+}
+
+// Block used in the printed report and History → View
+function assessmentBlock(a, forPrint) {
+  if (!hasAssessment(a)) return '';
+  const r = ratingDef(a.rating);
+  const color = r ? r.color : '#374151';
+  return `<div style="border:2px solid ${color};border-radius:8px;padding:10px 12px;margin:${forPrint ? '16px 0 0' : '0 0 12px'};${forPrint ? 'page-break-inside:avoid;' : ''}">
+    <div style="font-weight:700;font-size:13px;color:#1e3a8a;margin-bottom:6px;">🏁 ${uiText('assess')}</div>
+    ${r ? `<div style="display:inline-block;background:${color};color:#fff;font-weight:700;border-radius:16px;padding:4px 12px;font-size:${forPrint ? 14 : 13}px;">${escHtml(ratingText(a))}</div>` : ''}
+    ${a.remarks && a.remarks.trim() ? `<div style="margin-top:8px;font-size:12px;"><strong>${uiText('assessRemarks')}:</strong><br>${escHtml(a.remarks).replace(/\n/g, '<br>')}</div>` : ''}
+  </div>`;
+}
+
 // Status words follow the settings: "Available" for names, "Yes / No" for questions
 function statusWord(status) {
   const q = getSettings().question;
@@ -967,6 +1070,8 @@ function newInspectionPressed() {
 
 function clearForNewInspection() {
   if (_arranging) toggleArrange(false);
+  _assessment = emptyAssessment();
+  renderAssessment();
   // Clear marks and draft
   Object.keys(statusMap).forEach(k => delete statusMap[k]);
   _lastSavedId = null;
@@ -1213,7 +1318,7 @@ let _lastSavedId = null; // id of the record saved from the checklist on screen 
 let _warnPending = null; // { action: 'district'|'iti'|'trade', prevDistrict, prevIti }
 
 function hasUnsavedMarks() {
-  return _dirty && Object.keys(statusMap).length > 0;
+  return _dirty && (Object.keys(statusMap).length > 0 || hasAssessment(_assessment));
 }
 
 function showUnsavedWarning(actionFn, cancelFn, label) {
@@ -1227,8 +1332,10 @@ function showUnsavedWarning(actionFn, cancelFn, label) {
 async function tradeWarnSaveAndSwitch() {
   document.getElementById('trade-warn-modal').classList.remove('open');
   if (!_warnPending) return;
-  await saveInspection();
-  _warnPending.actionFn();
+  const pending = _warnPending;
+  const ok = await saveInspection();
+  if (!ok) { pending.cancelFn(); _warnPending = null; return; }   // stayed to add a rating
+  pending.actionFn();
   _warnPending = null;
 }
 
@@ -1323,6 +1430,8 @@ function loadChecklist() {
   if (!trade) return;
   // Clear any leftover marks from previous trade
   Object.keys(statusMap).forEach(k => delete statusMap[k]);
+  _assessment = emptyAssessment();
+  renderAssessment();
   _dirty = false;
   _lastSavedId = null;
 
@@ -1512,6 +1621,7 @@ function applySettingsToChecklist() {
     const h = document.getElementById('hdr-' + k);
     if (h) h.textContent = uiText(k);
   });
+  renderAssessment();
   if (document.getElementById('checklist-card').style.display !== 'none') {
     renderNSQF(); renderRegItems(); renderCustomItems(); updateSummary();
   }
@@ -1781,6 +1891,7 @@ function saveDraft() {
     savedId: _lastSavedId,
     staffRows: JSON.parse(JSON.stringify(staffRows)),
     staffRemarks: document.getElementById('staff-remarks').value,
+    assessment: JSON.parse(JSON.stringify(_assessment)),
     nsqfItems:  nsqfItems.map(c => c.id ? { id: c.id, name: c.name } : { name: c.name }),
     regItems:   regItems.map(c => c.id ? { id: c.id, name: c.name } : { name: c.name }),
     customItems: customItems.map(c => c.id ? { id: c.id, name: c.name } : { name: c.name }),
@@ -1859,6 +1970,7 @@ function resumeDraft() {
     renderNSQF(); renderRegItems(); renderCustomItems();
     if (draft.staffRows && draft.staffRows.length) { staffRows = draft.staffRows; renderStaffRows(); }
     if (draft.staffRemarks) document.getElementById('staff-remarks').value = draft.staffRemarks;
+    if (draft.assessment) { _assessment = { ...emptyAssessment(), ...draft.assessment }; renderAssessment(); }
     _lastSavedId = draft.savedId || null;
     _dirty = true;
     updateSummary();
@@ -1954,7 +2066,8 @@ function collectInspectionData() {
     remark: document.getElementById(`remark-custom-${i}`)?.value || ''
   }));
 
-  return { district, itiName: iti.name, itiCode: iti.code, trade, shift, unit, date, inspector: prof, staff, nsqf, reg, custom };
+  const assessment = { rating: _assessment.rating || '', urgentBy: [..._assessment.urgentBy], remarks: (_assessment.remarks || '').trim() };
+  return { district, itiName: iti.name, itiCode: iti.code, trade, shift, unit, date, inspector: prof, staff, nsqf, reg, custom, assessment };
 }
 
 // ================================================================
@@ -1962,7 +2075,12 @@ function collectInspectionData() {
 // ================================================================
 async function saveInspection() {
   const data = collectInspectionData();
-  if (!data) { alert('Please select District, ITI and Trade first.'); return; }
+  if (!data) { alert('Please select District, ITI and Trade first.'); return false; }
+  if (!data.assessment.rating &&
+      !confirm('🏁 No overall rating selected.\n\nSave without an overall rating?\n\nOK = Save anyway\nCancel = Go back and choose a rating')) {
+    document.getElementById('assess-box').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return false;
+  }
 
   // Saving the same checklist again updates that record instead of making a copy
   const updating = !!_lastSavedId && getHistory().some(r => r.id === _lastSavedId);
@@ -1988,6 +2106,7 @@ async function saveInspection() {
   } else {
     alert(head + '\nSaved on this phone. Sign in with Google to upload it to the cloud.');
   }
+  return true;
 }
 
 // ================================================================
@@ -2101,6 +2220,7 @@ function buildReportHTML(data) {
     <tr><th style="width:40px;">#</th><th>${uiText(getSettings().question ? 'question' : 'item')}</th><th style="width:150px;">${uiText('status')}</th><th>${uiText('remark')}</th></tr>
     ${rows}
   </table>
+  ${assessmentBlock(data.assessment, true)}
   <div class="footer"><div class="sign-box">${escHtml(prof.name || 'Inspector')}<br>${escHtml(prof.desig || '')}</div></div>
   </body></html>`;
 }
@@ -2115,6 +2235,7 @@ function resetForm() {
   _prevTrade = '';
   _warnPending = null;
   _lastSavedId = null;
+  _assessment = emptyAssessment();
   setInspDateToday();
   document.getElementById('sel-district')._prevDistrict = '';
   document.getElementById('sel-iti')._prevIti = '';
@@ -2269,6 +2390,7 @@ function renderHistory() {
       <td class="h-iti" style="font-size:12px;">${escHtml(r.itiName)}</td>
       <td class="h-trade" style="font-size:12px;">${escHtml(r.trade)}${r.shift||r.unit?'<br><span style="color:var(--muted);font-size:11px;">'+escHtml([r.shift,r.unit].filter(Boolean).join(' / '))+'</span>':''}</td>
       <td class="h-sum">
+        ${r.assessment && ratingDef(r.assessment.rating) ? `<div style="margin-bottom:3px;"><span style="background:${ratingDef(r.assessment.rating).color};color:#fff;border-radius:12px;padding:1px 8px;font-size:11px;font-weight:700;white-space:nowrap;">${escHtml(ratingText(r.assessment))}</span></div>` : ''}
         <span style="color:#065f46;font-weight:700;">✅${yes}</span>
         <span style="color:#991b1b;font-weight:700;margin:0 4px;">❌${no}</span>
         <span style="color:#92400e;font-weight:700;">⚠️${nu}</span>
@@ -2313,6 +2435,8 @@ function buildViewHTML(rec) {
     <div><strong>Inspector:</strong> ${escHtml(prof.name||'—')}</div>
     <div><strong>Designation:</strong> ${escHtml(prof.desig||'—')}</div>
   </div>`;
+
+  html += assessmentBlock(rec.assessment, false);
 
   // Staff block
   if (rec.staff && rec.staff.list && rec.staff.list.length) {
@@ -2376,6 +2500,19 @@ function editRecord(id) {
         <option value="Unit IV"  ${rec.unit==='Unit IV'?'selected':''}>Unit IV</option>
       </select>
     </div>
+  </div>
+  <div style="border:2px solid #c7d2fe;border-radius:8px;padding:12px;margin-bottom:14px;background:#f8faff;">
+    <div style="font-weight:700;font-size:13px;color:var(--primary-dark);margin-bottom:8px;">🏁 ${uiText('assess')}</div>
+    <select id="edit-rating" onchange="document.getElementById('edit-urgent').style.display=this.value==='urgent'?'':'none'" style="width:100%;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;margin-bottom:6px;">
+      <option value="">— Not rated —</option>
+      ${RATINGS.map(r => `<option value="${r.id}" ${(rec.assessment||{}).rating===r.id?'selected':''}>${r.icon} ${escHtml(L(r))}</option>`).join('')}
+    </select>
+    <div id="edit-urgent" style="display:${(rec.assessment||{}).rating==='urgent'?'':'none'};margin-bottom:6px;">
+      <div style="font-size:12px;font-weight:700;color:#991b1b;margin-bottom:4px;">${uiText('urgentBy')}</div>
+      ${URGENT_BY.map(u => `<label style="display:inline-flex;align-items:center;gap:5px;margin:0 10px 4px 0;font-size:12px;"><input type="checkbox" class="edit-urgent-cb" value="${u.id}" ${((rec.assessment||{}).urgentBy||[]).includes(u.id)?'checked':''} style="width:15px;height:15px;margin:0;"> ${escHtml(L(u))}</label>`).join('')}
+    </div>
+    <label style="font-size:12px;font-weight:600;color:var(--muted);">${uiText('assessRemarks')}</label>
+    <textarea id="edit-assess-remarks" rows="2" style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;resize:vertical;">${escHtml((rec.assessment||{}).remarks||'')}</textarea>
   </div>
   <div style="border:1px solid #c7d2fe;border-radius:8px;padding:12px;margin-bottom:14px;background:#f0f4ff;">
     <div style="font-weight:700;font-size:13px;color:var(--primary-dark);margin-bottom:9px;">👥 Staff Present During Inspection</div>
@@ -2454,6 +2591,12 @@ function saveEditModal() {
   window._editData.unit  = document.getElementById('edit-unit')?.value  || '';
   const ed = isoToDisplayDate(document.getElementById('edit-date')?.value);
   if (ed) window._editData.date = ed;
+  const rating = document.getElementById('edit-rating')?.value || '';
+  window._editData.assessment = {
+    rating,
+    urgentBy: rating === 'urgent' ? [...document.querySelectorAll('.edit-urgent-cb:checked')].map(c => c.value) : [],
+    remarks: (document.getElementById('edit-assess-remarks')?.value || '').trim()
+  };
 
   // Collect staff list from edit modal
   const editStaffList = [];
