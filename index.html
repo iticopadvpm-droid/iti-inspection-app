@@ -204,7 +204,7 @@ textarea { resize: vertical; min-height: 60px; }
 .chk-row .chk-name { font-size: 13px; font-weight: 600; flex: 1; min-width: 140px; }
 .chk-remark { margin-top: 7px; }
 /* Arrange mode */
-.chk-tools { display: none; gap: 3px; flex-shrink: 0; align-items: center; }
+.chk-tools { display: none; gap: 3px; flex-shrink: 0; align-items: center; margin-left: auto; }
 .chk-tools button { background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px; padding: 3px 7px; cursor: pointer; line-height: 1.2; }
 .drag-h { touch-action: none; user-select: none; cursor: grab; font-size: 18px; padding: 2px 8px; color: #4b5563; }
 .arrange-mode .chk-tools { display: flex; }
@@ -221,6 +221,7 @@ textarea { resize: vertical; min-height: 60px; }
 #arrange-done { display: none; position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 50;
   background: #057a55; color: #fff; border: none; border-radius: 24px; padding: 12px 22px; font-size: 15px; font-weight: 700; box-shadow: 0 4px 14px rgba(0,0,0,.25); cursor: pointer; }
 body.arranging #arrange-done { display: block; }
+body.arranging { padding-bottom: 90px; }
 .chk-remark input { margin-bottom: 0; padding: 5px 8px; font-size: 12px; }
 .chk-delete { color: var(--danger); background: none; border: none; cursor: pointer; font-size: 16px; padding: 2px 5px; border-radius: 4px; }
 .chk-delete:hover { background: var(--no-bg); }
@@ -268,6 +269,24 @@ body.arranging #arrange-done { display: block; }
 .hist-table th { background: #e0e7ff; color: #3730a3; font-size: 12px; padding: 8px 10px; text-align: left; border-bottom: 2px solid #c7d2fe; }
 .hist-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
 .hist-table tr:hover td { background: #f0f4ff; }
+/* Phones: each inspection becomes a card instead of a wide table row */
+@media (max-width: 640px) {
+  .hist-table, .hist-table tbody, .hist-table tr, .hist-table td { display: block; width: 100%; }
+  .hist-table .hist-head { display: none; }
+  .hist-table tr { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; background: #fff; position: relative; }
+  .hist-table tr:hover td { background: transparent; }
+  .hist-table td { border: none; padding: 2px 0 !important; }
+  .hist-table .h-num { position: absolute; top: 10px; right: 12px; width: auto; color: var(--muted); font-size: 11px; }
+  .hist-table .h-iti { font-size: 14px !important; font-weight: 700; color: var(--primary-dark); padding-right: 28px !important; }
+  .hist-table .h-dist { font-size: 12px; color: var(--muted); }
+  .hist-table .h-date { font-size: 12px; }
+  .hist-table .h-sum { margin: 4px 0; }
+  .hist-table .h-act { white-space: normal !important; display: grid !important; grid-template-columns: 1fr 1fr 44px 44px; gap: 6px; margin-top: 6px; }
+  .hist-table .h-act .btn { width: 100%; min-width: 0; padding-left: 4px; padding-right: 4px; justify-content: center; }
+  .hist-table tr { display: flex; flex-direction: column; }
+  .hist-table .h-iti { order: 1; } .hist-table .h-trade { order: 2; } .hist-table .h-dist { order: 3; }
+  .hist-table .h-date { order: 4; } .hist-table .h-sum { order: 5; } .hist-table .h-act { order: 6; }
+}
 .hist-empty { text-align: center; color: var(--muted); padding: 30px; font-size: 14px; }
 
 /* ===== ADD-ITEM FORM ===== */
@@ -370,7 +389,7 @@ body.arranging #arrange-done { display: block; }
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
         <div>
           <label>Shift</label>
-          <select id="sel-shift">
+          <select id="sel-shift" onchange="_dirty=true;saveDraft()">
             <option value="">-- Select Shift --</option>
             <option value="Shift 1">Shift 1</option>
             <option value="Shift 2">Shift 2</option>
@@ -378,7 +397,7 @@ body.arranging #arrange-done { display: block; }
         </div>
         <div>
           <label>Unit</label>
-          <select id="sel-unit">
+          <select id="sel-unit" onchange="_dirty=true;saveDraft()">
             <option value="">-- Select Unit --</option>
             <option value="Unit I">Unit I</option>
             <option value="Unit II">Unit II</option>
@@ -401,7 +420,7 @@ body.arranging #arrange-done { display: block; }
       <button class="btn btn-outline btn-sm no-print" onclick="addStaffRow()" style="margin-bottom:12px;">+ Add Staff</button>
 
       <label>Remarks</label>
-      <textarea id="staff-remarks" rows="2"></textarea>
+      <textarea id="staff-remarks" rows="2" oninput="_dirty=true;saveDraft()"></textarea>
     </div>
   </div>
 
@@ -980,7 +999,7 @@ function renderStaffRows() {
         ${staffRows.length > 1 ? `<button onclick="removeStaffRow(${i})" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:15px;" class="no-print">🗑</button>` : ''}
       </div>
       <label style="font-size:12px;font-weight:600;color:var(--muted);">Instructor Name</label>
-      <input type="text" value="${escHtml(row.name||'')}" oninput="staffRows[${i}].name=this.value" style="width:100%;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;margin-bottom:8px;">
+      <input type="text" value="${escHtml(row.name||'')}" oninput="staffRows[${i}].name=this.value;_dirty=true;saveDraft()" style="width:100%;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;margin-bottom:8px;">
       <label style="font-size:12px;font-weight:600;color:var(--muted);">Instructor Designation / Trade</label>
       <select onchange="handleStaffDesig(this,${i})" style="width:100%;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;margin-bottom:4px;">
         <option value="">-- Select --</option>
@@ -989,7 +1008,7 @@ function renderStaffRows() {
         <option value="Workshop Attendant" ${row.desig==='Workshop Attendant'?'selected':''}>Workshop Attendant</option>
         <option value="__other__" ${row.desig&&!['Senior Instructor','Junior Instructor','Workshop Attendant'].includes(row.desig)?'selected':''}>Other (type manually)</option>
       </select>
-      <input type="text" id="staff-desig-other-${i}" value="${row.desig&&!['Senior Instructor','Junior Instructor','Workshop Attendant'].includes(row.desig)?row.desig:''}" oninput="staffRows[${i}].desig=this.value" style="width:100%;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;margin-bottom:0;display:${row.desig&&!['Senior Instructor','Junior Instructor','Workshop Attendant'].includes(row.desig)?'block':'none'};">
+      <input type="text" id="staff-desig-other-${i}" value="${row.desig&&!['Senior Instructor','Junior Instructor','Workshop Attendant'].includes(row.desig)?row.desig:''}" oninput="staffRows[${i}].desig=this.value;_dirty=true;saveDraft()" style="width:100%;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;margin-bottom:0;display:${row.desig&&!['Senior Instructor','Junior Instructor','Workshop Attendant'].includes(row.desig)?'block':'none'};">
     `;
     container.appendChild(div);
   });
@@ -1005,16 +1024,21 @@ function handleStaffDesig(sel, i) {
     inp.style.display = 'none'; inp.value = '';
     staffRows[i].desig = sel.value;
   }
+  _dirty = true;
+  saveDraft();
 }
 
 function addStaffRow() {
   staffRows.push({ name: '', desig: '' });
   renderStaffRows();
+  saveDraft();
 }
 
 function removeStaffRow(i) {
   staffRows.splice(i, 1);
   renderStaffRows();
+  _dirty = true;
+  saveDraft();
 }
 
 function initStaffRows() {
@@ -1387,7 +1411,7 @@ function createCheckRow(section, idx, name) {
   const status = getStatus(section, idx);
   div.innerHTML = `
     <div class="chk-top">
-      <div style="display:flex;align-items:center;gap:6px;flex:1;width:100%;">
+      <div style="display:flex;align-items:center;gap:6px;flex:1;width:100%;flex-wrap:wrap;">
         <span class="chk-name" id="label-${section}-${idx}" style="flex:1;">${idx + 1}. ${escHtml(name)}</span>
         <span class="chk-tools no-print">
           <span class="drag-h" title="Drag to move" onpointerdown="startDrag(event)">☰</span>
@@ -1747,6 +1771,8 @@ function saveDraft() {
     nsqfRemarks, regRemarks,
     inspDate: document.getElementById('insp-date').value,
     savedId: _lastSavedId,
+    staffRows: JSON.parse(JSON.stringify(staffRows)),
+    staffRemarks: document.getElementById('staff-remarks').value,
     nsqfItems:  nsqfItems.map(c => c.id ? { id: c.id, name: c.name } : { name: c.name }),
     regItems:   regItems.map(c => c.id ? { id: c.id, name: c.name } : { name: c.name }),
     customItems: customItems.map(c => c.id ? { id: c.id, name: c.name } : { name: c.name }),
@@ -1823,6 +1849,8 @@ function resumeDraft() {
       });
     });
     renderNSQF(); renderRegItems(); renderCustomItems();
+    if (draft.staffRows && draft.staffRows.length) { staffRows = draft.staffRows; renderStaffRows(); }
+    if (draft.staffRemarks) document.getElementById('staff-remarks').value = draft.staffRemarks;
     _lastSavedId = draft.savedId || null;
     _dirty = true;
     updateSummary();
@@ -1965,6 +1993,7 @@ function printReport() {
 
 function openPrintView(data) {
   const w = window.open('', '_blank');
+  if (!w) { alert('⚠️ The print window was blocked by the browser.\nPlease allow pop-ups for this site and try again.'); return; }
   w.document.write(buildReportHTML(data));
   w.document.close();
   w.focus();
@@ -2065,6 +2094,7 @@ function buildReportHTML(data) {
 // ================================================================
 function resetForm() {
   if (!confirm('Reset all checklist entries?')) return;
+  if (_arranging) toggleArrange(false);
   Object.keys(statusMap).forEach(k => delete statusMap[k]);
   _prevTrade = '';
   _warnPending = null;
@@ -2208,7 +2238,7 @@ function renderHistory() {
   }
 
   let html = `<table class="hist-table">
-    <tr>
+    <tr class="hist-head">
       <th>#</th><th>Date</th><th>District</th><th>ITI</th><th>Trade</th><th>Summary</th><th>Actions</th>
     </tr>`;
   filtered.forEach((r, i) => {
@@ -2217,17 +2247,17 @@ function renderHistory() {
     const no  = all.filter(x=>x.status==='no').length;
     const nu  = all.filter(x=>x.status==='nu').length;
     html += `<tr>
-      <td>${i+1}</td>
-      <td>${escHtml(r.date)}${r._pending ? `<br><span style="font-size:10px;font-weight:700;color:${window._fbUser ? '#b45309' : '#6b7280'};white-space:nowrap;">${window._fbUser ? '⏳ Waiting to upload' : '📱 This phone'}</span>` : (window._fbUser ? '<br><span style="font-size:10px;color:#057a55;">☁️ Cloud</span>' : '')}</td>
-      <td>${escHtml(r.district)}</td>
-      <td style="font-size:12px;">${escHtml(r.itiName)}</td>
-      <td style="font-size:12px;">${escHtml(r.trade)}${r.shift||r.unit?'<br><span style="color:var(--muted);font-size:11px;">'+escHtml([r.shift,r.unit].filter(Boolean).join(' / '))+'</span>':''}</td>
-      <td>
+      <td class="h-num">${i+1}</td>
+      <td class="h-date">${escHtml(r.date)}${r._pending ? `<br><span style="font-size:10px;font-weight:700;color:${window._fbUser ? '#b45309' : '#6b7280'};white-space:nowrap;">${window._fbUser ? '⏳ Waiting to upload' : '📱 This phone'}</span>` : (window._fbUser ? '<br><span style="font-size:10px;color:#057a55;">☁️ Cloud</span>' : '')}</td>
+      <td class="h-dist">${escHtml(r.district)}</td>
+      <td class="h-iti" style="font-size:12px;">${escHtml(r.itiName)}</td>
+      <td class="h-trade" style="font-size:12px;">${escHtml(r.trade)}${r.shift||r.unit?'<br><span style="color:var(--muted);font-size:11px;">'+escHtml([r.shift,r.unit].filter(Boolean).join(' / '))+'</span>':''}</td>
+      <td class="h-sum">
         <span style="color:#065f46;font-weight:700;">✅${yes}</span>
         <span style="color:#991b1b;font-weight:700;margin:0 4px;">❌${no}</span>
         <span style="color:#92400e;font-weight:700;">⚠️${nu}</span>
       </td>
-      <td style="white-space:nowrap;">
+      <td class="h-act" style="white-space:nowrap;">
         <button class="btn btn-primary btn-xs" onclick="viewRecord('${r.id}')">👁 View</button>
         <button class="btn btn-warning btn-xs" onclick="editRecord('${r.id}')">✏️ Edit</button>
         <button class="btn btn-outline btn-xs" onclick="printRecord('${r.id}')">🖨️</button>
@@ -2258,7 +2288,7 @@ function viewRecord(id) {
 function buildViewHTML(rec) {
   const prof = rec.inspector || {};
   const shiftUnit = [rec.shift, rec.unit].filter(Boolean).join(' / ');
-  let html = `<h2>📋 ${escHtml(rec.itiName)}<br><small style="font-size:13px;color:var(--muted);">${rec.trade}${shiftUnit?' — '+shiftUnit:''} | ${escHtml(rec.date)}</small></h2>
+  let html = `<h2>📋 ${escHtml(rec.itiName)}<br><small style="font-size:13px;color:var(--muted);">${escHtml(rec.trade)}${shiftUnit?' — '+escHtml(shiftUnit):''} | ${escHtml(rec.date)}</small></h2>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:12px;font-size:13px;">
     <div><strong>District:</strong> ${escHtml(rec.district)}</div>
     <div><strong>Code:</strong> ${escHtml(rec.itiCode)}</div>
