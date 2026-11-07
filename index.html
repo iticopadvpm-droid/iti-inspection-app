@@ -704,6 +704,8 @@ const NSQF_DEFS = [
     qEn:"Is the Trainer's Observation & Evidence Report maintained?", qMl:"ട്രെയിനറുടെ ഒബ്സർവേഷൻ & എവിഡൻസ് റിപ്പോർട്ട് സൂക്ഷിക്കുന്നുണ്ടോ?" },
   { id:'ojt_reg', en:"On Job Training Register", ml:"ഓൺ ജോബ് ട്രെയിനിംഗ് രജിസ്റ്റർ",
     qEn:"Is the On Job Training Register maintained?", qMl:"ഓൺ ജോബ് ട്രെയിനിംഗ് രജിസ്റ്റർ സൂക്ഷിക്കുന്നുണ്ടോ?" },
+  { id:'latest_syllabus', en:"Latest Syllabus", ml:"ഏറ്റവും പുതിയ സിലബസ്",
+    qEn:"Is the latest syllabus available?", qMl:"ഏറ്റവും പുതിയ സിലബസ് ലഭ്യമാണോ?" },
   { id:'split_skill', en:"Split-up Syllabus – Skill", ml:"സ്പ്ലിറ്റ്-അപ്പ് സിലബസ് – സ്കിൽ",
     qEn:"Is the Split-up Syllabus for Skill prepared?", qMl:"സ്കിൽ വിഭാഗത്തിന്റെ സ്പ്ലിറ്റ്-അപ്പ് സിലബസ് തയ്യാറാക്കിയിട്ടുണ്ടോ?" },
   { id:'split_theory', en:"Split-up Syllabus – Theory WCS ED & ES", ml:"സ്പ്ലിറ്റ്-അപ്പ് സിലബസ് – തിയറി, WCS, ED & ES",
@@ -770,7 +772,7 @@ const REG_DEFS = [
     qEn:"If the ITI has no own land or building, is training running without disruption?", qMl:"സ്വന്തം സ്ഥലം / കെട്ടിടം ഇല്ലെങ്കിൽ, പരിശീലനം തടസ്സമില്ലാതെ നടക്കുന്നുണ്ടോ?" }
 ];
 // Items added to the defaults after an inspector may already have a saved list
-const NEW_DEF_IDS = ['staff_role'];
+const NEW_DEF_IDS = ['staff_role', 'latest_syllabus'];
 
 const ALL_DEFS = {}, DEF_BY_NAME = {};
 [...NSQF_DEFS, ...REG_DEFS].forEach(d => {
@@ -1284,8 +1286,15 @@ function loadChecklist() {
     // Add default items introduced after this inspector saved their list
     const seen = savedLists.seen || Object.keys(ALL_DEFS).filter(id => !NEW_DEF_IDS.includes(id));
     const unseen = id => !seen.includes(id);
-    NSQF_DEFS.filter(d => unseen(d.id)).forEach(d => nsqfItems.push({ id: d.id, name: d.en }));
-    REG_DEFS.filter(d => unseen(d.id)).forEach(d => regItems.push({ id: d.id, name: d.en }));
+    const addNew = (defs, list) => defs.forEach((d, i) => {
+      if (!unseen(d.id) || list.some(it => it.id === d.id)) return;
+      // place it right after the default that comes before it (if the inspector still has that one)
+      let pos = -1;
+      for (let j = i - 1; j >= 0 && pos === -1; j--) pos = list.findIndex(it => it.id === defs[j].id);
+      list.splice(pos + 1, 0, { id: d.id, name: d.en });
+    });
+    addNew(NSQF_DEFS, nsqfItems);
+    addNew(REG_DEFS, regItems);
     if (!savedLists.seen) saveUserItemLists();
   }
   const savedCustom = JSON.parse(localStorage.getItem('defaultCustomItems') || '[]');
