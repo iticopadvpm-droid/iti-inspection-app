@@ -197,6 +197,9 @@
     margin-top: 10px;
   }
 
+  .features { list-style:none; padding:0; margin:0; }
+  .features li { padding:8px 0; border-bottom:1px dashed #d1d5db; font-size:14px; line-height:1.5; }
+  .features li:last-child { border-bottom:none; }
   .tbl { width:100%; border-collapse:collapse; font-size:13px; margin:8px 0 12px; }
   .tbl th, .tbl td { border:1px solid #e5e7eb; padding:7px 9px; text-align:left; vertical-align:top; }
   .tbl th { background:#f3f4f6; }
@@ -214,6 +217,24 @@
 </header>
 
 <div class="container">
+
+  <!-- FEATURES -->
+  <div class="section green">
+    <h2>⭐ ഈ App ഉപയോഗിച്ച് എന്തെല്ലാം ചെയ്യാം</h2>
+    <ul class="features">
+      <li>🏫 കേരളത്തിലെ 100 Govt ITI-കളിൽ ഏതിലും, ഏത് trade-ഉം inspect ചെയ്യാം</li>
+      <li>✅ NSQF documents, registers, safety items എന്നിവ Yes / No / Not Updated എന്ന് mark ചെയ്യാം, remark എഴുതാം</li>
+      <li>👨‍🏫 Instructor-മാരുടെ പേരും designation-ഉം രേഖപ്പെടുത്താം</li>
+      <li>✏️ Checklist items edit / delete / add ചെയ്യാം, ഇഷ്ടമുള്ള ക്രമത്തിൽ ക്രമീകരിക്കാം</li>
+      <li>🌐 Checklist English-ലോ മലയാളത്തിലോ, ചോദ്യരൂപത്തിലോ കാണാം</li>
+      <li>💾 Mark ചെയ്യുന്നതെല്ലാം automatically draft ആയി save ആകും, ഒന്നും നഷ്ടപ്പെടില്ല</li>
+      <li>📴 Internet ഇല്ലാതെയും app തുറക്കാം, inspection save ചെയ്യാം. Internet വരുമ്പോൾ automatically cloud-ലേക്ക് upload ആകും</li>
+      <li>☁️ Google account-ൽ sign in ചെയ്താൽ, <strong>അതേ Google account</strong> ഉപയോഗിച്ച് ഏത് phone-ലും computer-ലും data കാണാം</li>
+      <li>📋 പഴയ inspections History-യിൽ കാണാം, തിരുത്താം, search ചെയ്യാം</li>
+      <li>🖨️ A4 inspection report print ചെയ്യാം / PDF ആക്കാം</li>
+      <li>📦 Backup (Export JSON) എടുക്കാം, മറ്റൊരു phone-ൽ restore (Import) ചെയ്യാം</li>
+    </ul>
+  </div>
 
   <!-- INTRO -->
   <div class="section">
@@ -381,29 +402,30 @@
     </div>
     <p style="font-size:13px;color:var(--muted);margin-top:4px;">ഓരോ item-ന്റെയും താഴെയുള്ള box-ൽ remark എഴുതാം. മുകളിലെ summary bar-ൽ Yes / No / N/U count കാണാം.</p>
 
-    <div class="step" style="margin-top:12px;">
-      <div class="step-num">✏️</div>
-      <div class="step-text">
-        <strong>Item-ന്റെ പേര് മാറ്റാം (Edit)</strong>
-        <span>Item-ന്റെ പേരിന് അടുത്തുള്ള ✏️ press ചെയ്ത് പുതിയ പേര് type ചെയ്ത് Enter അമർത്തുക.</span>
-      </div>
-    </div>
+    <h3>↕️ Checklist നിങ്ങളുടെ ഇഷ്ടത്തിന് ക്രമീകരിക്കാം</h3>
     <div class="step">
-      <div class="step-num">🗑</div>
+      <div class="step-num">↕️</div>
       <div class="step-text">
-        <strong>Item delete ചെയ്യാം</strong>
-        <span>🗑 press ചെയ്യുക — confirm ചോദിക്കും. ആവശ്യമില്ലാത്ത items ഇങ്ങനെ ഒഴിവാക്കാം.</span>
+        <strong><span class="en">↕️ Arrange items</span> press ചെയ്യുക</strong>
+        <span>Checklist-ന് മുകളിലെ ഈ button press ചെയ്താൽ arrange mode തുറക്കും. ഓരോ item-നും താഴെ പറയുന്ന buttons കാണും:</span>
       </div>
     </div>
+    <table class="tbl">
+      <tr><td><strong>☰</strong></td><td>വിരൽ കൊണ്ട് അമർത്തിപ്പിടിച്ച് മുകളിലേക്കോ താഴേക്കോ വലിച്ചു മാറ്റാം — മറ്റൊരു section-ലേക്കും</td></tr>
+      <tr><td><strong>▲ ▼</strong></td><td>ഒരു സ്ഥാനം മുകളിലേക്ക് / താഴേക്ക്. Section-ലെ ആദ്യ item ▲ press ചെയ്താൽ മുകളിലെ section-ലേക്കും, അവസാന item ▼ press ചെയ്താൽ താഴത്തെ section-ലേക്കും മാറും</td></tr>
+      <tr><td><strong>✏️</strong></td><td>Item-ന്റെ പേര് മാറ്റാം — പുതിയ പേര് type ചെയ്ത് Enter</td></tr>
+      <tr><td><strong>🗑</strong></td><td>Item delete ചെയ്യാം (confirm ചോദിക്കും)</td></tr>
+    </table>
+    <p style="font-size:13px;margin-bottom:10px;">കഴിഞ്ഞാൽ താഴെയുള്ള <span class="en">✓ Done arranging</span> press ചെയ്യുക. Mark ചെയ്ത items മാറ്റിയാലും marks-ഉം remarks-ഉം കൂടെ പോകും — ഒന്നും നഷ്ടപ്പെടില്ല.</p>
     <div class="step">
       <div class="step-num">↺</div>
       <div class="step-text">
-        <strong>Default list തിരികെ കൊണ്ടുവരാം (Reset)</strong>
-        <span>Section A, B heading-ന് അടുത്തുള്ള <span class="en">↺ Reset</span> press ചെയ്താൽ ആ section-ലെ original list തിരികെ വരും. ആ section-ലെ marks-ഉം remarks-ഉം clear ആകും.</span>
+        <strong>Default checklist തിരികെ കൊണ്ടുവരാം</strong>
+        <span>Checklist-ന്റെ അവസാനം (Section C-ക്ക് താഴെ) ഉള്ള <span class="en">↺ Restore default checklist</span> press ചെയ്താൽ എല്ലാ sections-ഉം original items-ഉം original ക്രമവും തിരികെ വരും. Mark ചെയ്ത items-ന്റെ marks നഷ്ടപ്പെടില്ല.</span>
       </div>
     </div>
     <div class="note">
-      📝 Edit / Delete ചെയ്ത മാറ്റങ്ങൾ <strong>നിങ്ങളുടെ list-ൽ മാത്രം</strong> ആണ് — മറ്റ് inspectors-നെ ബാധിക്കില്ല. അടുത്ത inspection-ലും നിങ്ങളുടെ മാറ്റിയ list തന്നെ വരും. (ഈ list ആ phone-ൽ ആണ് save ആകുന്നത് — മറ്റൊരു phone-ൽ default list ആയിരിക്കും.)
+      📝 ക്രമം മാറ്റൽ, പേര് മാറ്റൽ, delete, Section C-ൽ add ചെയ്യൽ — ഇവയെല്ലാം <strong>നിങ്ങളുടെ list-ൽ മാത്രം</strong> ആണ്, മറ്റ് inspectors-നെ ബാധിക്കില്ല. അടുത്ത inspection-ലും നിങ്ങളുടെ list തന്നെ വരും. (ഈ list ആ phone-ൽ ആണ് save ആകുന്നത് — മറ്റൊരു phone-ൽ default list ആയിരിക്കും.)
     </div>
 
     <h3>Step 4 — Save / Print</h3>
