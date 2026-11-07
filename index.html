@@ -539,8 +539,12 @@ body.arranging { padding-bottom: 90px; }
       <option value="ml">മലയാളം (Malayalam)</option>
     </select>
     <label style="display:flex;align-items:center;gap:10px;margin-top:14px;cursor:pointer;">
-      <input type="checkbox" id="set-question" onchange="changeSettings()" style="width:20px;height:20px;margin:0;">
+      <input type="checkbox" id="set-question" onchange="changeSettings()" style="width:20px;height:20px;margin:0;flex-shrink:0;">
       <span>Show items as questions</span>
+    </label>
+    <label style="display:flex;align-items:center;gap:10px;margin-top:12px;cursor:pointer;">
+      <input type="checkbox" id="set-marked" onchange="changeSettings()" style="width:20px;height:20px;margin:0;flex-shrink:0;">
+      <span>Print only marked items <span style="color:var(--muted);font-size:12px;">(skip "Not Marked" items in the printed report)</span></span>
     </label>
     <div style="margin-top:12px;padding:10px 12px;background:#f0f4ff;border-radius:8px;font-size:13px;">
       <div style="color:var(--muted);font-size:11px;margin-bottom:4px;">Preview</div>
@@ -851,7 +855,7 @@ function settingsKey() {
 }
 function getSettings() {
   const s = JSON.parse(localStorage.getItem(settingsKey()) || localStorage.getItem('appSettings_local') || '{}');
-  return { lang: s.lang === 'ml' ? 'ml' : 'en', question: !!s.question };
+  return { lang: s.lang === 'ml' ? 'ml' : 'en', question: !!s.question, markedOnly: !!s.markedOnly };
 }
 
 // Text shown for an item under the current settings
@@ -865,10 +869,12 @@ function itemText(item) {
 
 const UI_TEXT = {
   en: { nsqf:'Section A — NSQF Documents', reg:'Section B — Registers & Safety', custom:'Section C — Additional Items',
-        item:'Item', question:'Question', status:'Status', remark:'Remark',
+        item:'Item', question:'Question',
+        onlyMarked:'Only marked items are shown. {n} unmarked item(s) not printed.', noneMarked:'No items marked.', status:'Status', remark:'Remark',
         yes:'Available', no:'Not Available', nu:'Not Updated', qyes:'Yes', qno:'No', none:'Not Marked', total:'Total' },
   ml: { nsqf:'വിഭാഗം A — NSQF ഡോക്യുമെന്റുകൾ', reg:'വിഭാഗം B — രജിസ്റ്ററുകളും സുരക്ഷയും', custom:'വിഭാഗം C — അധിക ഇനങ്ങൾ',
-        item:'ഇനം', question:'ചോദ്യം', status:'സ്ഥിതി', remark:'റിമാർക്ക്',
+        item:'ഇനം', question:'ചോദ്യം',
+        onlyMarked:'മാർക്ക് ചെയ്ത ഇനങ്ങൾ മാത്രം കാണിച്ചിരിക്കുന്നു. മാർക്ക് ചെയ്യാത്ത {n} ഇനം print ചെയ്തിട്ടില്ല.', noneMarked:'ഒരു ഇനവും മാർക്ക് ചെയ്തിട്ടില്ല.', status:'സ്ഥിതി', remark:'റിമാർക്ക്',
         yes:'ലഭ്യമാണ്', no:'ലഭ്യമല്ല', nu:'അപ്ഡേറ്റ് ചെയ്തിട്ടില്ല', qyes:'ഉണ്ട്', qno:'ഇല്ല', none:'മാർക്ക് ചെയ്തിട്ടില്ല', total:'ആകെ' }
 };
 function uiText(key) { return UI_TEXT[getSettings().lang][key]; }
@@ -1478,6 +1484,7 @@ function loadSettingsUI() {
   const l = document.getElementById('set-lang'), q = document.getElementById('set-question');
   if (l) l.value = s.lang;
   if (q) q.checked = s.question;
+  const m = document.getElementById('set-marked'); if (m) m.checked = s.markedOnly;
   updateSettingsPreview();
 }
 
@@ -1491,7 +1498,8 @@ function updateSettingsPreview() {
 function changeSettings() {
   const lang = document.getElementById('set-lang').value;
   const question = document.getElementById('set-question').checked;
-  localStorage.setItem(settingsKey(), JSON.stringify({ lang, question }));
+  const markedOnly = document.getElementById('set-marked').checked;
+  localStorage.setItem(settingsKey(), JSON.stringify({ lang, question, markedOnly }));
   updateSettingsPreview();
   applySettingsToChecklist();
   const m = document.getElementById('set-msg');
@@ -2014,10 +2022,14 @@ function buildReportHTML(data) {
     { section: uiText('reg'),    items: data.reg },
     { section: uiText('custom'), items: data.custom }
   ];
+  // Setting: print only items that were marked (or have a remark)
+  const markedOnly = getSettings().markedOnly;
+  const isMarked = i => !!(i.status || (i.remark && String(i.remark).trim()));
   all.forEach(sec => {
-    if (!sec.items || !sec.items.length) return;
+    const items = (sec.items || []).filter(i => !markedOnly || isMarked(i));
+    if (!items.length) return;
     rows += `<tr><td colspan="4" style="background:#e0e7ff;font-weight:700;padding:7px 10px;color:#1e3a8a;">${sec.section}</td></tr>`;
-    sec.items.forEach(item => {
+    items.forEach(item => {
       rows += `<tr>
         <td style="text-align:center;width:40px;">${sno++}</td>
         <td style="padding:6px 8px;">${escHtml(itemText(item))}</td>
@@ -2027,8 +2039,11 @@ function buildReportHTML(data) {
     });
   });
 
-  let yes=0,no=0,nu=0,tot=0;
-  all.forEach(sec => { (sec.items||[]).forEach(i => { tot++; if(i.status==='yes')yes++; else if(i.status==='no')no++; else if(i.status==='nu')nu++; }); });
+  let yes=0,no=0,nu=0,tot=0,unmarked=0;
+  all.forEach(sec => { (sec.items||[]).forEach(i => { tot++; if (!isMarked(i)) unmarked++; if(i.status==='yes')yes++; else if(i.status==='no')no++; else if(i.status==='nu')nu++; }); });
+  if (!rows) rows = `<tr><td colspan="4" style="text-align:center;padding:14px;color:#6b7280;">${uiText('noneMarked')}</td></tr>`;
+  const markedNote = (markedOnly && unmarked)
+    ? `<div style="font-size:11px;color:#6b7280;margin:-6px 0 10px;">ℹ️ ${uiText('onlyMarked').replace('{n}', unmarked)}</div>` : '';
 
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>ITI Inspection Report</title>
   <style>
@@ -2081,6 +2096,7 @@ function buildReportHTML(data) {
     <span class="pill pill-u">${statusWord('nu')}: ${nu}</span>
     <span class="pill pill-t">📋 ${uiText('total')}: ${tot}</span>
   </div>
+  ${markedNote}
   <table>
     <tr><th style="width:40px;">#</th><th>${uiText(getSettings().question ? 'question' : 'item')}</th><th style="width:150px;">${uiText('status')}</th><th>${uiText('remark')}</th></tr>
     ${rows}
