@@ -203,6 +203,24 @@ textarea { resize: vertical; min-height: 60px; }
 .chk-row .chk-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 .chk-row .chk-name { font-size: 13px; font-weight: 600; flex: 1; min-width: 140px; }
 .chk-remark { margin-top: 7px; }
+/* Arrange mode */
+.chk-tools { display: none; gap: 3px; flex-shrink: 0; align-items: center; }
+.chk-tools button { background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px; padding: 3px 7px; cursor: pointer; line-height: 1.2; }
+.drag-h { touch-action: none; user-select: none; cursor: grab; font-size: 18px; padding: 2px 8px; color: #4b5563; }
+.arrange-mode .chk-tools { display: flex; }
+.arrange-mode .status-toggle, .arrange-mode .chk-remark { display: none; }
+.arrange-mode .chk-row { padding-top: 6px; padding-bottom: 6px; }
+.arrange-mode .sec-items { min-height: 40px; border-radius: 8px; }
+.arrange-mode .sec-items:empty { border: 2px dashed #c7d2fe; }
+.arrange-mode .sec-items:empty::after { content: 'Drag items here'; display: block; text-align: center; color: #6b7280; font-size: 12px; padding: 10px; }
+.chk-row.dragging { background: #eef2ff !important; box-shadow: 0 6px 18px rgba(30,64,175,.25); position: relative; z-index: 5; }
+.chk-row.moved { animation: movedFlash .8s ease; }
+@keyframes movedFlash { from { background: #fef9c3; } to { background: inherit; } }
+#arrange-help { display: none; font-size: 12px; background: #eef2ff; color: #1e3a8a; border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; }
+.arrange-mode #arrange-help { display: block; }
+#arrange-done { display: none; position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 50;
+  background: #057a55; color: #fff; border: none; border-radius: 24px; padding: 12px 22px; font-size: 15px; font-weight: 700; box-shadow: 0 4px 14px rgba(0,0,0,.25); cursor: pointer; }
+body.arranging #arrange-done { display: block; }
 .chk-remark input { margin-bottom: 0; padding: 5px 8px; font-size: 12px; }
 .chk-delete { color: var(--danger); background: none; border: none; cursor: pointer; font-size: 16px; padding: 2px 5px; border-radius: 4px; }
 .chk-delete:hover { background: var(--no-bg); }
@@ -400,29 +418,37 @@ textarea { resize: vertical; min-height: 60px; }
         <div class="summary-pill sp-tot">📋 Total: <span id="cnt-tot">0</span></div>
       </div>
 
+      <div class="no-print" style="display:flex;justify-content:flex-end;margin:-4px 0 6px;">
+        <button id="btn-arrange" class="btn btn-outline btn-sm" onclick="toggleArrange()">↕️ Arrange items</button>
+      </div>
+      <div id="arrange-help" class="no-print">
+        ☰ Drag, or use ▲ ▼ to move items — also between sections. ✏️ rename · 🗑 delete. Your order is kept for next inspections.
+      </div>
+
       <!-- Section A: NSQF Documents -->
       <div class="section-hdr">
         <h3>📄 <span id="hdr-nsqf">Section A — NSQF Documents</span></h3>
-        <button class="no-print" onclick="resetSectionToDefault('nsqf')" title="Restore default items" style="background:none;border:none;font-size:11px;color:#6b7280;cursor:pointer;padding:2px 6px;">↺ Reset</button>
       </div>
-      <div id="nsqf-items"></div>
+      <div id="nsqf-items" class="sec-items" data-sec="nsqf"></div>
 
       <!-- Section B: Registers & Safety -->
       <div class="section-hdr">
         <h3>📦 <span id="hdr-reg">Section B — Registers &amp; Safety</span></h3>
-        <button class="no-print" onclick="resetSectionToDefault('reg')" title="Restore default items" style="background:none;border:none;font-size:11px;color:#6b7280;cursor:pointer;padding:2px 6px;">↺ Reset</button>
       </div>
-      <div id="reg-items"></div>
+      <div id="reg-items" class="sec-items" data-sec="reg"></div>
 
       <!-- Section C: Custom Items -->
       <div class="section-hdr">
         <h3>➕ <span id="hdr-custom">Section C — Additional Items</span></h3>
         <span class="badge" id="custom-count">0</span>
       </div>
-      <div id="custom-items"></div>
+      <div id="custom-items" class="sec-items" data-sec="custom"></div>
       <div class="add-item-row no-print">
         <input type="text" id="new-item-name" placeholder="" onkeydown="if(event.key==='Enter') addCustomItem()">
         <button class="btn btn-outline btn-sm" onclick="addCustomItem()">+ Add</button>
+      </div>
+      <div class="no-print" style="text-align:right;margin-top:8px;">
+        <button onclick="resetChecklistToDefault()" style="background:none;border:none;font-size:12px;color:#6b7280;cursor:pointer;padding:4px 6px;text-decoration:underline;">↺ Restore default checklist</button>
       </div>
 
       <!-- Action buttons -->
@@ -434,6 +460,8 @@ textarea { resize: vertical; min-height: 60px; }
     </div>
   </div>
 </div>
+
+<button id="arrange-done" class="no-print" onclick="toggleArrange(false)">✓ Done arranging</button>
 
 <!-- ============================================================ -->
 <!-- PAGE: HISTORY                                                 -->
@@ -884,6 +912,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // NAVIGATION
 // ================================================================
 function showPage(name) {
+  if (name !== 'home' && typeof _arranging !== 'undefined' && _arranging) toggleArrange(false);
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
@@ -912,6 +941,7 @@ function newInspectionPressed() {
 }
 
 function clearForNewInspection() {
+  if (_arranging) toggleArrange(false);
   // Clear marks and draft
   Object.keys(statusMap).forEach(k => delete statusMap[k]);
   _lastSavedId = null;
@@ -1246,6 +1276,7 @@ function tradeChanged() {
 }
 
 function applyTradeSwitch(trade) {
+  if (_arranging) toggleArrange(false);
   const tradeSel = document.getElementById('sel-trade');
   tradeSel.value = trade;
   _prevTrade = trade;
@@ -1297,8 +1328,16 @@ function loadChecklist() {
     addNew(REG_DEFS, regItems);
     if (!savedLists.seen) saveUserItemLists();
   }
-  const savedCustom = JSON.parse(localStorage.getItem('defaultCustomItems') || '[]');
-  customItems = savedCustom.map(n => ({ name: n }));
+  const profileCustom = JSON.parse(localStorage.getItem('defaultCustomItems') || '[]');
+  if (savedLists && savedLists.custom) {
+    customItems = savedLists.custom.map(toItem);
+    // items added on the Profile page since the list was saved
+    const seenC = savedLists.customSeen || [];
+    const all = [...nsqfItems, ...regItems, ...customItems].map(i => i.name);
+    profileCustom.filter(n => !seenC.includes(n) && !all.includes(n)).forEach(n => customItems.push({ name: n }));
+  } else {
+    customItems = profileCustom.map(n => ({ name: n }));
+  }
 
   // Show staff card and clear fields
   document.getElementById('staff-card').style.display = 'block';
@@ -1342,15 +1381,20 @@ function createCheckRow(section, idx, name) {
   const div = document.createElement('div');
   div.className = 'chk-row';
   div.id = `row-${section}-${idx}`;
+  div.dataset.sec = section;
+  div.dataset.idx = idx;
 
   const status = getStatus(section, idx);
   div.innerHTML = `
     <div class="chk-top">
-      <div style="display:flex;align-items:flex-start;gap:6px;flex:1;width:100%;">
+      <div style="display:flex;align-items:center;gap:6px;flex:1;width:100%;">
         <span class="chk-name" id="label-${section}-${idx}" style="flex:1;">${idx + 1}. ${escHtml(name)}</span>
-        <span class="no-print" style="display:flex;gap:2px;flex-shrink:0;">
-          <button class="chk-delete" title="Edit item name" onclick="editItemName('${section}',${idx})" style="font-size:14px;padding:2px 6px;">✏️</button>
-          <button class="chk-delete" title="Remove item" onclick="removeItem('${section}',${idx})" style="font-size:14px;padding:2px 6px;">🗑</button>
+        <span class="chk-tools no-print">
+          <span class="drag-h" title="Drag to move" onpointerdown="startDrag(event)">☰</span>
+          <button title="Move up" onclick="moveItem('${section}',${idx},-1)">▲</button>
+          <button title="Move down" onclick="moveItem('${section}',${idx},1)">▼</button>
+          <button title="Rename" onclick="editItemName('${section}',${idx})">✏️</button>
+          <button title="Delete" onclick="removeItem('${section}',${idx})">🗑</button>
         </span>
       </div>
       <div class="status-toggle">
@@ -1447,25 +1491,167 @@ function getUserItemsKey() {
   return `userItemLists_${uid}`;
 }
 
-function resetSectionToDefault(section) {
-  const label = section === 'nsqf' ? 'NSQF Documents' : 'Registers & Safety';
-  if (!confirm(`Reset "${label}" to the default list? Your edits will be lost.`)) return;
-  if (section === 'nsqf') nsqfItems = defaultItems(NSQF_DEFS);
-  if (section === 'reg')  regItems  = defaultItems(REG_DEFS);
-  // Clear statusMap for that section
-  Object.keys(statusMap).filter(k => k.startsWith(section+'-')).forEach(k => delete statusMap[k]);
+// ── Arrange: move items within and between sections ─────────────
+const SECTION_ORDER = ['nsqf', 'reg', 'custom'];
+let _arranging = false;
+
+function toggleArrange(on) {
+  _arranging = (on === undefined) ? !_arranging : on;
+  document.getElementById('checklist-card').classList.toggle('arrange-mode', _arranging);
+  document.body.classList.toggle('arranging', _arranging);
+  document.getElementById('btn-arrange').textContent = _arranging ? '✓ Done arranging' : '↕️ Arrange items';
+}
+
+function setItemList(sec, list) {
+  if (sec === 'nsqf') nsqfItems = list;
+  if (sec === 'reg')  regItems  = list;
+  if (sec === 'custom') customItems = list;
+}
+
+// Items together with their marks/remarks, so marks travel with the item
+function snapshotSections() {
+  const snap = {};
+  SECTION_ORDER.forEach(sec => {
+    snap[sec] = getItemList(sec).map((item, i) => ({ item, st: statusMap[`${sec}-${i}`] }));
+  });
+  return snap;
+}
+function applySnapshot(snap) {
+  Object.keys(statusMap).forEach(k => delete statusMap[k]);
+  SECTION_ORDER.forEach(sec => {
+    setItemList(sec, snap[sec].map(e => e.item));
+    snap[sec].forEach((e, i) => { if (e.st) statusMap[`${sec}-${i}`] = e.st; });
+  });
   saveUserItemLists();
-  renderSection(section);
+  renderNSQF(); renderRegItems(); renderCustomItems();
   updateSummary();
   saveDraft();
+}
+function flashRow(sec, idx) {
+  const row = document.getElementById(`row-${sec}-${idx}`);
+  if (!row) return;
+  row.classList.add('moved');
+  row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  setTimeout(() => row.classList.remove('moved'), 900);
+}
+
+function moveItem(sec, idx, dir) {
+  const snap = snapshotSections();
+  const arr = snap[sec];
+  const si = SECTION_ORDER.indexOf(sec);
+  let toSec = sec, toIdx;
+  if (dir < 0) {
+    if (idx > 0) { [arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]]; toIdx = idx - 1; }
+    else if (si > 0) { toSec = SECTION_ORDER[si - 1]; snap[toSec].push(arr.splice(idx, 1)[0]); toIdx = snap[toSec].length - 1; }
+    else return;
+  } else {
+    if (idx < arr.length - 1) { [arr[idx + 1], arr[idx]] = [arr[idx], arr[idx + 1]]; toIdx = idx + 1; }
+    else if (si < SECTION_ORDER.length - 1) { toSec = SECTION_ORDER[si + 1]; snap[toSec].unshift(arr.splice(idx, 1)[0]); toIdx = 0; }
+    else return;
+  }
+  applySnapshot(snap);
+  flashRow(toSec, toIdx);
+}
+
+// Drag with finger or mouse (pointer events work on phones and computers)
+let _drag = null;
+function startDrag(e) {
+  const handle = e.currentTarget;
+  const row = handle.closest('.chk-row');
+  if (!row) return;
+  e.preventDefault();
+  _drag = { row, handle, x: e.clientX, y: e.clientY, snap: snapshotSections() };
+  row.classList.add('dragging');
+  // Listen on the whole page: moving the row in the page releases pointer capture on the handle
+  document.addEventListener('pointermove', onDragMove, { passive: false });
+  document.addEventListener('pointerup', endDrag);
+  document.addEventListener('pointercancel', endDrag);
+  document.addEventListener('touchmove', blockTouchScroll, { passive: false });
+  _drag.timer = setInterval(dragAutoScroll, 30);
+}
+function blockTouchScroll(e) { if (_drag) e.preventDefault(); }
+function onDragMove(e) {
+  if (!_drag) return;
+  e.preventDefault();
+  _drag.x = e.clientX; _drag.y = e.clientY;
+  placeDraggedRow();
+}
+function dragAutoScroll() {
+  if (!_drag) return;
+  const edge = 80;
+  if (_drag.y < edge) window.scrollBy(0, -12);
+  else if (_drag.y > window.innerHeight - edge) window.scrollBy(0, 12);
+  else return;
+  placeDraggedRow();
+}
+function placeDraggedRow() {
+  const { row, x, y } = _drag;
+  row.style.pointerEvents = 'none';
+  const el = document.elementFromPoint(x, y);
+  row.style.pointerEvents = '';
+  if (!el) return;
+  const over = el.closest('.chk-row');
+  if (over && over !== row && over.closest('.sec-items')) {
+    const r = over.getBoundingClientRect();
+    if (y < r.top + r.height / 2) { if (over.previousElementSibling !== row) over.before(row); }
+    else if (over.nextElementSibling !== row) over.after(row);
+    return;
+  }
+  const hdr = el.closest('.section-hdr');
+  const box = hdr ? hdr.nextElementSibling : el.closest('.sec-items');
+  if (box && box.classList.contains('sec-items') && !box.contains(row)) {
+    // entering a section from above → first item; from below → last item
+    const r = box.getBoundingClientRect();
+    if (hdr || y < r.top + 20) box.prepend(row); else box.append(row);
+  }
+}
+function endDrag() {
+  if (!_drag) return;
+  const { row, handle, snap } = _drag;
+  clearInterval(_drag.timer);
+  document.removeEventListener('pointermove', onDragMove);
+  document.removeEventListener('pointerup', endDrag);
+  document.removeEventListener('pointercancel', endDrag);
+  document.removeEventListener('touchmove', blockTouchScroll);
+  row.classList.remove('dragging');
+  _drag = null;
+  // New order = order of rows on screen
+  const next = {};
+  SECTION_ORDER.forEach(sec => {
+    next[sec] = [...document.getElementById(`${sec}-items`).querySelectorAll('.chk-row')]
+      .map(r => snap[r.dataset.sec][parseInt(r.dataset.idx)]);
+  });
+  const toSec = row.parentElement.dataset.sec;
+  const toIdx = [...row.parentElement.children].indexOf(row);
+  applySnapshot(next);
+  flashRow(toSec, toIdx);
+}
+
+// One reset for the whole checklist: default items, default order
+function resetChecklistToDefault() {
+  if (!confirm('Restore the default checklist?\n\nYour renamed, deleted and added items and your order will be replaced by the default list.\nMarks on items that are in both lists are kept.')) return;
+  const keyOf = it => it.id || ('n:' + it.name);
+  const marks = {};
+  const snap = snapshotSections();
+  SECTION_ORDER.forEach(sec => snap[sec].forEach(e => { if (e.st) marks[keyOf(e.item)] = e.st; }));
+  const fresh = {
+    nsqf: defaultItems(NSQF_DEFS),
+    reg: defaultItems(REG_DEFS),
+    custom: JSON.parse(localStorage.getItem('defaultCustomItems') || '[]').map(n => ({ name: n }))
+  };
+  const next = {};
+  SECTION_ORDER.forEach(sec => { next[sec] = fresh[sec].map(item => ({ item, st: marks[keyOf(item)] })); });
+  applySnapshot(next);
 }
 
 function saveUserItemLists() {
   const key = getUserItemsKey();
   localStorage.setItem(key, JSON.stringify({
-    nsqf: nsqfItems.map(i => i.id ? { id: i.id, name: i.name } : { name: i.name }),
-    reg:  regItems.map(i => i.id ? { id: i.id, name: i.name } : { name: i.name }),
-    seen: Object.keys(ALL_DEFS)
+    nsqf:   nsqfItems.map(i => i.id ? { id: i.id, name: i.name } : { name: i.name }),
+    reg:    regItems.map(i => i.id ? { id: i.id, name: i.name } : { name: i.name }),
+    custom: customItems.map(i => i.id ? { id: i.id, name: i.name } : { name: i.name }),
+    seen: Object.keys(ALL_DEFS),
+    customSeen: JSON.parse(localStorage.getItem('defaultCustomItems') || '[]')
   }));
 }
 
@@ -1473,7 +1659,7 @@ function saveItemName(section, idx, val) {
   const list = getItemList(section);
   val = val.trim();
   if (val && val !== itemText(list[idx])) list[idx] = { name: val };
-  if (section === 'nsqf' || section === 'reg') saveUserItemLists();
+  saveUserItemLists();
   renderSection(section);
   updateSummary();
   saveDraft();
@@ -1490,7 +1676,7 @@ function removeItem(section, idx) {
     if (next) statusMap[`${section}-${i}`] = next;
     else delete statusMap[`${section}-${i}`];
   }
-  if (section === 'nsqf' || section === 'reg') saveUserItemLists();
+  saveUserItemLists();
   renderSection(section);
   updateSummary();
   saveDraft();
@@ -1563,7 +1749,7 @@ function saveDraft() {
     savedId: _lastSavedId,
     nsqfItems:  nsqfItems.map(c => c.id ? { id: c.id, name: c.name } : { name: c.name }),
     regItems:   regItems.map(c => c.id ? { id: c.id, name: c.name } : { name: c.name }),
-    customItems: customItems.map(c => c.name),
+    customItems: customItems.map(c => c.id ? { id: c.id, name: c.name } : { name: c.name }),
     savedAt: new Date().toISOString()
   };
   localStorage.setItem('inspectionDraft', JSON.stringify(draft));
@@ -1625,7 +1811,7 @@ function resumeDraft() {
     loadChecklist();
     if (draft.nsqfItems)   nsqfItems   = draft.nsqfItems.map(toItem);
     if (draft.regItems)    regItems    = draft.regItems.map(toItem);
-    if (draft.customItems) customItems = draft.customItems.map(n => ({ name: n }));
+    if (draft.customItems) customItems = draft.customItems.map(toItem);
 
     // Restore marks + remarks (remarks live in statusMap; older drafts kept them separately)
     Object.assign(statusMap, JSON.parse(JSON.stringify(draft.statusMap || {})));
@@ -1687,6 +1873,7 @@ function addCustomItem() {
   if (!name) return;
   customItems.push({ name });
   inp.value = '';
+  saveUserItemLists();
   renderCustomItems();
   updateSummary();
   saveDraft();
@@ -1725,6 +1912,7 @@ function collectInspectionData() {
     remark: document.getElementById(`remark-reg-${i}`)?.value || ''
   }));
   const custom = customItems.map((item, i) => ({
+    ...(item.id ? { id: item.id } : {}),
     name: item.name,
     status: getStatus('custom', i) || '',
     remark: document.getElementById(`remark-custom-${i}`)?.value || ''
@@ -1985,8 +2173,17 @@ function addDefaultItem() {
 
 function removeDefaultItem(idx) {
   const items = JSON.parse(localStorage.getItem('defaultCustomItems') || '[]');
-  items.splice(idx, 1);
+  const [removed] = items.splice(idx, 1);
   localStorage.setItem('defaultCustomItems', JSON.stringify(items));
+  const key = getUserItemsKey();
+  const lists = JSON.parse(localStorage.getItem(key) || 'null');
+  if (lists && removed) {
+    ['nsqf', 'reg', 'custom'].forEach(sec => {
+      if (lists[sec]) lists[sec] = lists[sec].filter(x => (typeof x === 'string' ? x : (x.id ? null : x.name)) !== removed);
+    });
+    lists.customSeen = items;
+    localStorage.setItem(key, JSON.stringify(lists));
+  }
   loadDefaultCustomItems();
 }
 
