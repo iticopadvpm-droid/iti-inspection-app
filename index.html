@@ -135,7 +135,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); color:
 
 /* ===== FORM ELEMENTS ===== */
 label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
-input[type=text], input[type=email], input[type=tel], select, textarea {
+input[type=text], input[type=email], input[type=tel], input[type=date], select, textarea {
   width: 100%;
   padding: 8px 10px;
   border: 1px solid #d1d5db;
@@ -1772,7 +1772,9 @@ function endDrag() {
 
 // One reset for the whole checklist: default items, default order
 function resetChecklistToDefault() {
-  if (!confirm('Restore the default checklist?\n\nYour renamed, deleted and added items and your order will be replaced by the default list.\nMarks on items that are in both lists are kept.')) return;
+  const typed = prompt('⚠️ Restore the default checklist?\n\nYour renamed, deleted and added items and your order will be replaced by the default list.\nMarks on items that are in both lists are kept.\n\nType YES to confirm:');
+  if (typed === null) return;                                   // Cancel
+  if (typed.trim().toUpperCase() !== 'YES') { alert('Not restored — you must type YES to confirm.'); return; }
   const keyOf = it => it.id || ('n:' + it.name);
   const marks = {};
   const snap = snapshotSections();
